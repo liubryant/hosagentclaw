@@ -1,0 +1,16 @@
+{
+  "string": [
+    {
+      "name": "module_desc",
+      "value": "Agent智能体生活助手"
+    },
+    {
+      "name": "EntryAbility_desc",
+      "value": "Agent智能体生活助手主入口"
+    },
+    {
+      "name": "reason_write_imagevideo",
+      "value": "用于将AI生成的图片保存到您的相册"
+    }
+  ]
+}
