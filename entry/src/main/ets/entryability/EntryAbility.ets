@@ -4,6 +4,7 @@ import { window } from '@kit.ArkUI';
 import { AppPreferences } from '../storage/AppPreferences';
 import { EnvironmentManager } from '../common/AppConfig';
 import { GeneratedDocumentStore } from '../store/GeneratedDocumentStore';
+import { WindowStageHolder } from '../common/WindowStageHolder';
 
 const DOMAIN = 0x0000;
 
@@ -13,6 +14,7 @@ export default class EntryAbility extends UIAbility {
     AppPreferences.shared.init(this.context);
     EnvironmentManager.shared.init(this.context);
     GeneratedDocumentStore.shared.init(this.context);
+    WindowStageHolder.abilityContext = this.context;
   }
 
   onDestroy(): void {
@@ -21,6 +23,7 @@ export default class EntryAbility extends UIAbility {
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
+    WindowStageHolder.windowStage = windowStage;
 
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
