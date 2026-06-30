@@ -42,7 +42,10 @@ export class ChatStore {
   @Trace messages: ChatMessage[] = [];
   @Trace draft: string = '';
   @Trace isSending: boolean = false;
+  @Trace generationStatus: string = '';
   @Trace errorMessage: string | null = null;
+  @Trace attachedImageBase64: string | null = null;
+  @Trace currentEntryMode: ChatEntryMode = ChatEntryMode.DEFAULT;
 
   private messagesBySession: Record<string, ChatMessage[]> = {};
   private entryModesBySession: Record<string, ChatEntryMode> = {};
@@ -64,6 +67,7 @@ export class ChatStore {
         }
       });
       this.messages = this.messagesBySession[this.selectedSessionID] ?? [];
+      this.currentEntryMode = this.entryModesBySession[this.selectedSessionID] ?? ChatEntryMode.DEFAULT;
     } else {
       const initialSession = new LocalChatSession();
       this.sessions = [initialSession];
@@ -91,7 +95,7 @@ export class ChatStore {
   }
 
   get selectedEntryMode(): ChatEntryMode {
-    return this.entryModesBySession[this.selectedSessionID] ?? ChatEntryMode.DEFAULT;
+    return this.currentEntryMode;
   }
 
   createSession(entryMode: ChatEntryMode = ChatEntryMode.DEFAULT): void {
@@ -100,10 +104,32 @@ export class ChatStore {
     this.selectedSessionID = session.id;
     this.messagesBySession[session.id] = [];
     this.entryModesBySession[session.id] = entryMode;
+    this.currentEntryMode = entryMode;
     this.messages = [];
     this.draft = '';
+    this.attachedImageBase64 = null;
     this.errorMessage = null;
     this.saveHistory();
+  }
+
+  /**
+   * 清除当前会话的入口模式（恢复为 DEFAULT）并清除图片附件。
+   * 用于热点话题卡片点击时先重置模式再填入 prompt。
+   */
+  resetToDefaultMode(): void {
+    if (this.selectedSessionID.length > 0) {
+      this.entryModesBySession[this.selectedSessionID] = ChatEntryMode.DEFAULT;
+    }
+    this.currentEntryMode = ChatEntryMode.DEFAULT;
+    this.attachedImageBase64 = null;
+    this.saveHistory();
+  }
+
+  updateEntryMode(mode: ChatEntryMode): void {
+    if (this.selectedSessionID.length > 0) {
+      this.entryModesBySession[this.selectedSessionID] = mode;
+    }
+    this.currentEntryMode = mode;
   }
 
   createSessionWithDraft(draftText: string, entryMode: ChatEntryMode = ChatEntryMode.DEFAULT): void {
@@ -114,6 +140,7 @@ export class ChatStore {
   selectSession(session: LocalChatSession): void {
     this.selectedSessionID = session.id;
     this.messages = this.messagesBySession[session.id] ?? [];
+    this.currentEntryMode = this.entryModesBySession[session.id] ?? ChatEntryMode.DEFAULT;
     this.draft = '';
     this.errorMessage = null;
     this.saveHistory();
@@ -139,33 +166,45 @@ export class ChatStore {
 
   send(): void {
     const text = this.draft.trim();
-    if (text.length === 0 || this.isSending) {
+    const hasAttachment = this.attachedImageBase64 !== null;
+    if ((text.length === 0 && !hasAttachment) || this.isSending) {
       return;
     }
 
     this.draft = '';
     this.errorMessage = null;
+    // Capture and clear image before building messages
+    const imageBase64 = this.attachedImageBase64;
+    this.attachedImageBase64 = null;
+
     const userMessage = new ChatMessage();
     userMessage.id = newId();
     userMessage.role = ChatRole.USER;
     userMessage.content = text;
     this.append(userMessage);
-    this.updateSelectedSessionTitleIfNeeded(text);
+    this.updateSelectedSessionTitleIfNeeded(text.length > 0 ? text : '（图片）');
     this.saveHistory();
-    this.isSending = true;
-
     const entryMode = this.selectedEntryMode;
+    this.isSending = true;
+    this.generationStatus = entryMode === ChatEntryMode.VIDEO ? '正在提交视频生成任务…' : '';
+
     const sessionIdAtSend = this.selectedSessionID;
     const requestMessages = (this.messagesBySession[sessionIdAtSend] ?? []).map((message): ChatMessage => {
       if (message.id !== userMessage.id) {
         return message;
       }
       const outbound = ChatMessage.fromPlain(message);
-      outbound.content = this.outboundContent(text, entryMode);
+      outbound.content = this.outboundContent(text, entryMode, imageBase64);
       return outbound;
     });
 
-    GatewayClient.shared.sendChat(requestMessages)
+    const generation = entryMode === ChatEntryMode.VIDEO && imageBase64 === null
+      ? GatewayClient.shared.generateVideo(text, (status: string) => {
+        this.generationStatus = status;
+      })
+      : GatewayClient.shared.sendChat(requestMessages);
+
+    generation
       .then((reply: string) => {
         const fallbackTitle = this.selectedSession?.title ?? 'document';
         const saveResult = GeneratedDocumentStore.shared.saveGeneratedDocuments(reply, fallbackTitle);
@@ -181,6 +220,7 @@ export class ChatStore {
       })
       .finally(() => {
         this.isSending = false;
+        this.generationStatus = '';
       });
   }
 
@@ -200,7 +240,12 @@ export class ChatStore {
     AppPreferences.shared.chatHistorySnapshot = null;
   }
 
-  private outboundContent(text: string, entryMode: ChatEntryMode): string {
+  private outboundContent(text: string, entryMode: ChatEntryMode, imageBase64: string | null = null): string {
+    // Always route to image API when an image is attached, regardless of entry mode
+    if (imageBase64 !== null) {
+      const imageDataUri = `data:image/jpeg;base64,${imageBase64}`;
+      return `[[IMAGE_MODE]] ${imageDataUri}\n${text}`;
+    }
     if (entryMode === ChatEntryMode.IMAGE) {
       return `[[IMAGE_MODE]] ${text}`;
     }

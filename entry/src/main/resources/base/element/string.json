@@ -11,6 +11,10 @@
     {
       "name": "reason_write_imagevideo",
       "value": "用于将AI生成的图片保存到您的相册"
+    },
+    {
+      "name": "reason_read_imagevideo",
+      "value": "用于读取您选择的图片以供AI处理"
     }
   ]
 }

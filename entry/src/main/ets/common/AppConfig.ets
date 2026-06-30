@@ -73,7 +73,7 @@ export class EnvironmentManager {
 export class AppConfig {
   static readonly appName: string = 'Agent';
   static readonly defaultChatModel: string = 'glm-4.7';
-  static readonly requestTimeoutMs: number = 30 * 1000;
+  static readonly requestTimeoutMs: number = 5 * 60 * 1000;
   static readonly documentGenerationRequestTimeoutMs: number = 10 * 60 * 1000;
   static readonly mediaGenerationRequestTimeoutMs: number = 30 * 60 * 1000;
 

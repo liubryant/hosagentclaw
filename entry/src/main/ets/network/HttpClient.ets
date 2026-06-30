@@ -16,6 +16,31 @@ export class HttpClientError extends Error {
  * 对应 iOS URLSessionHTTPClient.swift，用 @ohos.net.http 实现一个轻量 JSON POST 客户端。
  */
 export class HttpClient {
+  static async get(
+    url: string,
+    headers: Record<string, string>,
+    timeoutMs: number
+  ): Promise<string> {
+    const request = http.createHttp();
+    try {
+      const response = await request.request(url, {
+        method: http.RequestMethod.GET,
+        header: headers,
+        readTimeout: timeoutMs,
+        connectTimeout: 15000,
+        expectDataType: http.HttpDataType.STRING
+      });
+
+      const bodyText = typeof response.result === 'string' ? response.result : JSON.stringify(response.result);
+      if (response.responseCode < 200 || response.responseCode >= 300) {
+        throw new HttpClientError(response.responseCode, bodyText);
+      }
+      return bodyText;
+    } finally {
+      request.destroy();
+    }
+  }
+
   static async postJson(
     url: string,
     headers: Record<string, string>,
@@ -29,7 +54,7 @@ export class HttpClient {
         header: headers,
         extraData: bodyJson,
         readTimeout: timeoutMs,
-        connectTimeout: timeoutMs,
+        connectTimeout: 15000,
         expectDataType: http.HttpDataType.STRING
       });
 

@@ -17,6 +17,7 @@ const SPLASH_TIMEOUT_FALLBACK_MS = 5000;
 struct Index {
   @State private onboardingCompleted: boolean = AppPreferences.shared.onboardingCompleted;
   @State private isWaitingForSplashAd: boolean = false;
+  @State private showSkipButton: boolean = false;
   private didRequestSplashAd: boolean = false;
 
   aboutToAppear(): void {
@@ -30,7 +31,7 @@ struct Index {
     if (this.onboardingCompleted) {
       Stack() {
         if (this.isWaitingForSplashAd) {
-          Column().width('100%').height('100%').backgroundColor(Color.White)
+          this.splashWaitPage()
         } else {
           ShellPage()
         }
@@ -55,12 +56,44 @@ struct Index {
     this.requestSplashAdIfNeeded();
   }
 
+  @Builder
+  private splashWaitPage() {
+    Stack() {
+      Column()
+        .width('100%')
+        .height('100%')
+        .backgroundColor(Color.White)
+
+      if (this.showSkipButton) {
+        Row() {
+          Text('跳过')
+            .fontSize(13)
+            .fontFamily('MiSans')
+            .fontColor('#666666')
+            .padding({ left: 16, right: 16 })
+            .height(34)
+            .backgroundColor('rgba(0,0,0,0.08)')
+            .borderRadius(17)
+            .onClick(() => {
+              this.isWaitingForSplashAd = false;
+            })
+        }
+        .width('100%')
+        .justifyContent(FlexAlign.End)
+        .padding({ right: 20, top: 56 })
+      }
+    }
+    .width('100%')
+    .height('100%')
+  }
+
   private requestSplashAdIfNeeded(): void {
     if (this.didRequestSplashAd || !GroMoreSplashAdManager.shared.shouldRequestSplashThisSession) {
       this.isWaitingForSplashAd = false;
       return;
     }
     this.didRequestSplashAd = true;
+    setTimeout(() => { this.showSkipButton = true; }, 1500);
 
     setTimeout(() => {
       if (this.isWaitingForSplashAd) {

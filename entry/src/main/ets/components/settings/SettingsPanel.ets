@@ -1,4 +1,3 @@
-import { common } from '@kit.AbilityKit';
 import { AgentClawDesign } from '../../common/Design';
 import { AppEnvironment, EnvironmentManager, environmentDisplayName } from '../../common/AppConfig';
 import { AppPreferences } from '../../storage/AppPreferences';
@@ -30,8 +29,8 @@ const ICP_URL = 'https://beian.miit.gov.cn/';
 @Component
 export struct SettingsPanel {
   store: ChatStore = new ChatStore();
-  onClose: () => void = () => {
-  };
+  onClose: () => void = () => {};
+  onOpenWebView: (url: string, title: string) => void = () => {};
   @State private selectedPage: SettingsPage = 'skills';
   @State private showEnvironmentOption: boolean = false;
   @State private currentEnvironment: AppEnvironment = AppEnvironment.PRODUCTION;
@@ -358,9 +357,7 @@ export struct SettingsPanel {
     .borderRadius(8)
     .margin({ top: 8 })
     .onClick(() => {
-      const context = getContext(this) as common.UIAbilityContext;
-      context.openLink(url).catch(() => {
-      });
+      this.onOpenWebView(url, title);
     })
   }
 
@@ -440,9 +437,7 @@ export struct SettingsPanel {
         .fontColor('#808080')
         .decoration({ type: TextDecorationType.Underline })
         .onClick(() => {
-          const context = getContext(this) as common.UIAbilityContext;
-          context.openLink(ICP_URL).catch(() => {
-          });
+          this.onOpenWebView(ICP_URL, 'ICP备案');
         })
     }
     .width('100%')

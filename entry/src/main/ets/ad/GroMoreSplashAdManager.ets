@@ -64,9 +64,12 @@ export class GroMoreSplashAdManager {
 
     const uiContext = windowStage.getMainWindowSync().getUIContext();
     const screen = display.getDefaultDisplaySync();
+    // HarmonyOS display.width/height are in physical pixels; GroMore SDK expects vp
+    const adWidth = Math.round(screen.width / screen.densityPixels);
+    const adHeight = Math.round(screen.height / screen.densityPixels);
     const adSlot = new AdSlotBuilder()
       .setCodeId(slotId)
-      .setAcceptSize(screen.width, screen.height)
+      .setAcceptSize(adWidth, adHeight)
       .build();
 
     let completionCalled = false;
