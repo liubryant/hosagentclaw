@@ -1,12 +1,26 @@
 {
   "app": {
-    "signingConfigs": [],
+    "signingConfigs": [
+      {
+        "name": "default",
+        "type": "HarmonyOS",
+        "material": {
+          "storeFile": "/Users/liuzheng/Desktop/hoscsr/agentclaw.p12",
+          "storePassword": "000000182C10371E6D6C237462B3C1864FD5D43E3D2A258FB4E044CFBF68718378FE56CB972FDE8C",
+          "keyAlias": "agentclaw",
+          "keyPassword": "000000187551A3EA24FD5D7C92FE18CB8279B89649DEF88E6E00CDEC7392D93ABA5B165CD0053C50",
+          "signAlg": "SHA256withECDSA",
+          "profile": "/Users/liuzheng/Desktop/hoscsr/agentclawRelease.p7b",
+          "certpath": "/Users/liuzheng/Desktop/hoscsr/liuzheng.cer"
+        }
+      }
+    ],
     "products": [
       {
         "name": "default",
         "signingConfig": "default",
-        "targetSdkVersion": "26.0.0",
-        "compatibleSdkVersion": "26.0.0",
+        "targetSdkVersion": "6.1.1(24)",
+        "compatibleSdkVersion": "6.1.1(24)",
         "runtimeOS": "HarmonyOS",
         "buildOption": {
           "strictMode": {

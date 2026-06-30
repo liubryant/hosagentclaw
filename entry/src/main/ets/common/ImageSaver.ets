@@ -3,19 +3,12 @@
  * @mail bryant_liu24@126.com
  */
 import { http } from '@kit.NetworkKit';
-import { fileIo } from '@kit.CoreFileKit';
+import { fileIo, fileUri } from '@kit.CoreFileKit';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
-import { abilityAccessCtrl, common, Permissions } from '@kit.AbilityKit';
+import { common } from '@kit.AbilityKit';
 
 export class ImageSaver {
   static async saveNetworkImageToGallery(context: common.UIAbilityContext, url: string): Promise<void> {
-    const permission: Permissions = 'ohos.permission.WRITE_IMAGEVIDEO';
-    const grantResult = await abilityAccessCtrl.createAtManager().requestPermissionsFromUser(context, [permission]);
-    const granted = grantResult.authResults.length > 0 && grantResult.authResults[0] === 0;
-    if (!granted) {
-      throw new Error('没有相册写入权限');
-    }
-
     const request = http.createHttp();
     let buffer: ArrayBuffer;
     try {
@@ -30,12 +23,45 @@ export class ImageSaver {
 
     const helper = photoAccessHelper.getPhotoAccessHelper(context);
     const extension = ImageSaver.extensionFromURL(url);
-    const assetUri = await helper.createAsset(photoAccessHelper.PhotoType.IMAGE, extension);
-    const file = await fileIo.open(assetUri, fileIo.OpenMode.READ_WRITE);
+    const title = `AgentClaw_${Date.now()}`;
+    const tempPath = `${context.cacheDir}/${title}.${extension}`;
+    const tempFile = await fileIo.open(
+      tempPath,
+      fileIo.OpenMode.CREATE | fileIo.OpenMode.READ_WRITE
+    );
     try {
-      await fileIo.write(file.fd, buffer);
+      await fileIo.write(tempFile.fd, buffer);
     } finally {
-      await fileIo.close(file);
+      await fileIo.close(tempFile);
+    }
+
+    try {
+      // The system dialog grants write access to the selected destination URI without
+      // requiring the restricted WRITE_IMAGEVIDEO ACL permission.
+      const destinationUris = await helper.showAssetsCreationDialog(
+        [fileUri.getUriFromPath(tempPath)],
+        [{
+          title: title,
+          fileNameExtension: extension,
+          photoType: photoAccessHelper.PhotoType.IMAGE
+        }]
+      );
+      if (destinationUris.length === 0) {
+        throw new Error('已取消保存');
+      }
+
+      const destinationFile = await fileIo.open(destinationUris[0], fileIo.OpenMode.READ_WRITE);
+      try {
+        await fileIo.write(destinationFile.fd, buffer);
+      } finally {
+        await fileIo.close(destinationFile);
+      }
+    } finally {
+      try {
+        await fileIo.unlink(tempPath);
+      } catch (_) {
+        // Best-effort cleanup; a failed cache deletion must not invalidate a saved image.
+      }
     }
   }
 

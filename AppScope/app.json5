@@ -1,6 +1,6 @@
 {
   "app": {
-    "bundleName": "ai.cjym.agentclaw",
+    "bundleName": "cn.cjym.agentclaw",
     "vendor": "cjym",
     "versionCode": 1000000,
     "versionName": "1.0.0",
