@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { common } from '@kit.AbilityKit';
 import { AgentClawDesign } from '../../common/Design';
 import { Icons } from '../../common/Icons';
@@ -7,9 +11,6 @@ import { GeneratedDocumentStore } from '../../store/GeneratedDocumentStore';
 import { GeneratedDocument } from '../../model/ChatModels';
 import { DocumentPreviewOverlay } from './DocumentPreviewPage';
 
-/**
- * 对应 iOS ShellView.swift 里的 DocumentsListView。
- */
 @Component
 export struct DocumentsListPage {
   store: ChatStore = new ChatStore();

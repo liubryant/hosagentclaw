@@ -1,9 +1,10 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { AgentClawDesign } from '../../common/Design';
 import { FancyIdea, FancyIdeaGroup, FancyIdeaStore } from './FancyIdeaData';
 
-/**
- * 对应 iOS FancyIdeasView.swift。
- */
 @Component
 export struct FancyIdeasPage {
   onUseIdea: (idea: FancyIdea) => void = () => {

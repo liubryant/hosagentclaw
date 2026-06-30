@@ -1,12 +1,13 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { preferences } from '@kit.ArkData';
 import { common } from '@kit.AbilityKit';
 
 const PREFS_NAME = 'agent_claw_prefs';
 const KEY_APP_ENVIRONMENT = 'app_environment';
 
-/**
- * 运行环境：对应 iOS AppConfig.swift 里的 AppEnvironment。
- */
 export enum AppEnvironment {
   PRODUCTION = 'production',
   TESTING = 'testing'
@@ -23,11 +24,6 @@ export function environmentDisplayName(env: AppEnvironment): string {
   return env === AppEnvironment.PRODUCTION ? '生产环境' : '测试环境';
 }
 
-/**
- * 对应 iOS EnvironmentManager：管理当前网关环境并持久化到本地。
- * 直接使用独立的 Preferences 实例（与 AppPreferences 共享同一个存储名），
- * 避免 AppConfig 与 AppPreferences 之间出现循环依赖（与 iOS 用 UserDefaults.standard 一致）。
- */
 export class EnvironmentManager {
   private static instance: EnvironmentManager | null = null;
   private store: preferences.Preferences | null = null;
@@ -67,9 +63,6 @@ export class EnvironmentManager {
   }
 }
 
-/**
- * 对应 iOS AppConfig.swift。
- */
 export class AppConfig {
   static readonly appName: string = 'Agent';
   static readonly defaultChatModel: string = 'glm-4.7';

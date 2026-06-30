@@ -1,9 +1,12 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { AgentClawDesign } from '../../common/Design';
 import { common } from '@kit.AbilityKit';
 import { image } from '@kit.ImageKit';
 import { media } from '@kit.MediaKit';
 
-// Hardcoded filenames from rawfile/creation/images/
 const IMAGE_FILES: string[] = [
   '005_realistic_photos_1_5dfc37a87a.png',
   '006_futuristic_7bd187b758.png',
@@ -35,7 +38,6 @@ const IMAGE_FILES: string[] = [
   'img_20260628060956_263_5.jpg'
 ];
 
-// Hardcoded filenames from rawfile/creation/videos/
 const VIDEO_FILES: string[] = [
   '001_artlist-video.mp4',
   '002_artlist-video.mp4',
@@ -96,10 +98,6 @@ const VIDEO_FEATURE_CARDS: FeatureCard[] = [
   }
 ];
 
-/**
- * 对应 Android 画图/画廊页面。
- * 视觉更新：匹配 Android CreationFragment 布局。
- */
 @Component
 export struct CreationGalleryPage {
   onLaunchImageChat: () => void = () => {};
@@ -135,11 +133,20 @@ export struct CreationGalleryPage {
           media.AVImageQueryOptions.AV_IMAGE_QUERY_CLOSEST_SYNC,
           { width: 480, height: 320 }
         );
+        const info = await thumbnail.getImageInfo();
+        const w = info.size.width;
+        const h = info.size.height;
+        if (w > h) {
+          const cx = Math.floor((w - h) / 2);
+          await thumbnail.crop({ x: cx, y: 0, size: { width: h, height: h } });
+        } else if (h > w) {
+          const cy = Math.floor((h - w) / 2);
+          await thumbnail.crop({ x: 0, y: cy, size: { width: w, height: w } });
+        }
         const updated = this.videoThumbnails.slice();
         updated[index] = thumbnail;
         this.videoThumbnails = updated;
       } catch (_) {
-        // Keep the colored fallback for unsupported or damaged media.
       } finally {
         await generator.release().catch(() => {});
         if (opened) {
@@ -155,7 +162,6 @@ export struct CreationGalleryPage {
       Column() {
         Scroll() {
           Column() {
-            // Title with gradient accent color
             Text('今天用AI创作什么？')
               .fontSize(27)
               .fontWeight(FontWeight.Bold)
@@ -166,7 +172,6 @@ export struct CreationGalleryPage {
               .margin({ top: 26, bottom: 0 })
               .padding({ left: 20, right: 20 })
 
-            // Pill tab bar
             Row() {
               this.tabPill('图片', 0)
               this.tabPill('视频', 1)
@@ -195,12 +200,10 @@ export struct CreationGalleryPage {
       .height('100%')
       .backgroundColor('#FFFDFD')
 
-      // Fullscreen image viewer
       if (this.fullscreenImage.length > 0) {
         this.fullscreenImageOverlay()
       }
 
-      // Fullscreen video player
       if (this.fullscreenVideo.length > 0) {
         this.fullscreenVideoOverlay()
       }
@@ -311,29 +314,32 @@ export struct CreationGalleryPage {
               if (this.videoThumbnails[index] !== undefined) {
                 Image(this.videoThumbnails[index])
                   .width('100%')
-                  .height(160)
+                  .height('100%')
                   .objectFit(ImageFit.Cover)
               } else {
                 Column()
                   .width('100%')
-                  .height(160)
+                  .height('100%')
                   .linearGradient({
                     angle: 150,
                     colors: [['#7558F7', 0], ['#187FD8', 0.55], ['#5CC6BE', 1]] as [string, number][]
                   })
               }
 
-              Column() {
-                Text('▶').fontSize(14).fontColor(Color.White)
+              Stack() {
+                Image($rawfile('icons/ic_creation_play.svg'))
+                  .width(20)
+                  .height(20)
               }
               .width(42)
               .height(42)
               .borderRadius(21)
-              .justifyContent(FlexAlign.Center)
               .backgroundColor('rgba(24,25,32,0.72)')
               .border({ width: 1, color: 'rgba(255,255,255,0.33)' })
               .margin({ top: 10, right: 10 })
             }
+            .width('100%')
+            .height('100%')
           }
           .width('100%')
           .height(160)
@@ -358,10 +364,9 @@ export struct CreationGalleryPage {
     Column({ space: 0 }) {
       Blank().layoutWeight(1)
 
-      // Icon at bottom
-      Text(card.isPrimary ? '✦' : '⊞')
-        .fontSize(22)
-        .fontColor(Color.White)
+      Image(card.isPrimary ? $rawfile('icons/ic_creation_spark.svg') : $rawfile('icons/ic_creation_layers.svg'))
+        .width(27)
+        .height(27)
 
       Text(card.title)
         .fontSize(16)
@@ -447,7 +452,7 @@ export struct CreationGalleryPage {
 
       Video({ src: $rawfile('creation/videos/' + this.fullscreenVideo) })
         .width('100%').height('100%').objectFit(ImageFit.Contain)
-        .controls(true).autoPlay(true)
+        .controls(false).autoPlay(true).loop(true)
 
       Column() {
         Row() {

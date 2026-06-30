@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 export interface FancyIdea {
   id: string;
   title: string;
@@ -17,9 +21,6 @@ interface FancyIdeaContent {
   prompt: string;
 }
 
-/**
- * 对应 iOS FancyIdeasView.swift 的 FancyIdeaContent.items（文案原样照搬）。
- */
 const CONTENT: FancyIdeaContent[] = [
   { title: '热点资讯自动汇总', subtitle: '还在一条条刷资讯？每日自动整理，不用费心查找，快速看懂当天重点', prompt: '创建每日「8:00」定时任务，自动抓取当日「AI科技」领域全网热点、重要资讯及要闻摘要，整理成简洁的内容，准时推送至我的眼前。' },
   { title: '创业点子可行性验证', subtitle: '有想法不敢下手？帮你快速验证可行性，零成本少踩坑', prompt: '验证AR智能体办公场景自动化助手这个创业点子，从市场需求、竞争格局、成本投入、盈利模式四个维度分析，生成简易可行性报告。' },

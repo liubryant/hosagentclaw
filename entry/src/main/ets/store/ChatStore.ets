@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import {
   ChatEntryMode,
   ChatHistorySnapshot,
@@ -26,15 +30,22 @@ const DOCUMENT_GENERATION_INSTRUCTION = `你正在为鸿蒙客户端生成可导
 \`\`\`
 代码块外只保留一句简短说明。`;
 
+const AGENT_STATUS_MESSAGES: string[] = [
+  '正在调用search工具...',
+  '正在联网搜索...',
+  '调用knowledge工具中...',
+  '执行工具中...',
+  '正在执行...',
+  '分析数据中...',
+  '整理结果中...',
+];
+
 const DOCUMENT_KEYWORDS = [
   '文档', '报告', '简报', '文章', '文件', '导出',
   'html', 'markdown', '.md', 'md文件', 'readme',
   'document', 'report', 'file'
 ];
 
-/**
- * 对应 iOS ChatViewModel.swift，使用 ArkUI V2 状态管理（@ObservedV2/@Trace）。
- */
 @ObservedV2
 export class ChatStore {
   @Trace sessions: LocalChatSession[] = [];
@@ -47,6 +58,8 @@ export class ChatStore {
   @Trace attachedImageBase64: string | null = null;
   @Trace currentEntryMode: ChatEntryMode = ChatEntryMode.DEFAULT;
 
+  private statusTimer: number = -1;
+  private statusMsgIndex: number = 0;
   private messagesBySession: Record<string, ChatMessage[]> = {};
   private entryModesBySession: Record<string, ChatEntryMode> = {};
 
@@ -186,7 +199,13 @@ export class ChatStore {
     this.saveHistory();
     const entryMode = this.selectedEntryMode;
     this.isSending = true;
-    this.generationStatus = entryMode === ChatEntryMode.VIDEO ? '正在提交视频生成任务…' : '';
+    if (entryMode === ChatEntryMode.VIDEO) {
+      this.generationStatus = '正在提交视频生成任务…';
+    } else if (entryMode === ChatEntryMode.IMAGE || imageBase64 !== null) {
+      this.generationStatus = '正在生成图片...';
+    } else {
+      this.startStatusCycling();
+    }
 
     const sessionIdAtSend = this.selectedSessionID;
     const requestMessages = (this.messagesBySession[sessionIdAtSend] ?? []).map((message): ChatMessage => {
@@ -220,8 +239,26 @@ export class ChatStore {
       })
       .finally(() => {
         this.isSending = false;
-        this.generationStatus = '';
+        this.stopStatusCycling();
       });
+  }
+
+  private startStatusCycling(): void {
+    this.stopStatusCycling();
+    this.statusMsgIndex = 0;
+    this.generationStatus = AGENT_STATUS_MESSAGES[0];
+    this.statusTimer = setInterval(() => {
+      this.statusMsgIndex = (this.statusMsgIndex + 1) % AGENT_STATUS_MESSAGES.length;
+      this.generationStatus = AGENT_STATUS_MESSAGES[this.statusMsgIndex];
+    }, 3000) as number;
+  }
+
+  private stopStatusCycling(): void {
+    if (this.statusTimer >= 0) {
+      clearInterval(this.statusTimer);
+      this.statusTimer = -1;
+    }
+    this.generationStatus = '';
   }
 
   clearAllData(): void {

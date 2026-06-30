@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { AppConfig, EnvironmentManager } from '../common/AppConfig';
 import { AppPreferences } from '../storage/AppPreferences';
 import { HttpClient } from '../network/HttpClient';
@@ -48,9 +52,6 @@ function stripModeMarkers(content: string): string {
     .trim();
 }
 
-/**
- * 对应 iOS GatewayClient.swift。
- */
 export class GatewayClient {
   private static instance: GatewayClient | null = null;
 

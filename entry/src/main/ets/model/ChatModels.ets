@@ -1,8 +1,9 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { util } from '@kit.ArkTS';
 
-/**
- * 对应 iOS ChatModels.swift。
- */
 export enum ChatRole {
   SYSTEM = 'system',
   USER = 'user',

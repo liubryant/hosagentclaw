@@ -1,12 +1,12 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { preInit, init, agree, setLogEnabled, trackEvent } from '@umeng/analytics';
 import { UMConfig } from '@umeng/common';
 import { AdConfig } from '../common/AdConfig';
 import { WindowStageHolder } from '../common/WindowStageHolder';
 
-/**
- * 友盟+统计封装。对应 iOS UMengAnalytics.swift。
- * 合规要求：initialize() 只能在用户同意隐私政策后调用（调用方是 pages/Index.ets）。
- */
 export class UMengAnalytics {
   private static instance: UMengAnalytics | null = null;
   private isInitialized: boolean = false;

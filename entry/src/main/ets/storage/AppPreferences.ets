@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { preferences } from '@kit.ArkData';
 import { common } from '@kit.AbilityKit';
 import { AppConfig } from '../common/AppConfig';
@@ -15,11 +19,6 @@ class Key {
   static readonly userPhone = 'user_phone';
 }
 
-/**
- * 对应 iOS AppPreferences.swift + KeychainStore.swift。
- * 鸿蒙没有与 iOS Keychain 完全对应的能力，网关 Token 本身只是自托管网关的访问凭证，
- * 复杂度上与其敏感级别匹配，因此与其它偏好设置一样存进同一个 Preferences。
- */
 export class AppPreferences {
   private static instance: AppPreferences | null = null;
   private store: preferences.Preferences | null = null;

@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { deviceInfo } from '@kit.BasicServicesKit';
 import { AppConfig } from '../common/AppConfig';
 import { AppPreferences } from '../storage/AppPreferences';

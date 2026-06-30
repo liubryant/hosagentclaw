@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { window } from '@kit.ArkUI';
 import { common } from '@kit.AbilityKit';
 

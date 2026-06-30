@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { AgentClawDesign } from '../../common/Design';
 import { AppPreferences } from '../../storage/AppPreferences';
 import { LoginDialog } from '../account/LoginDialog';
@@ -7,10 +11,6 @@ const PRIVACY_URL = 'https://www.cjym123.cn/privacy_agentclaw.html';
 const FEEDBACK_URL = 'https://www.cjym123.cn/feedback_agentclaw.html';
 const APP_VERSION = '1.0.0';
 
-/**
- * 对应 Android ProfileFragment。
- * 视觉更新：匹配 Android fragment_profile.xml 布局。
- */
 @Component
 export struct ProfilePage {
   onOpenSettings: () => void = () => {};

@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { common } from '@kit.AbilityKit';
 import { inputMethod } from '@kit.IMEKit';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
@@ -41,7 +45,6 @@ const QUICK_PROMPTS: QuickPrompt[] = [
   }
 ];
 
-// Background images for hotspot cards, cycling in order
 const HOTSPOT_BG_IMAGES: ResourceStr[] = [
   $r('app.media.img_chat_idea_skill'),
   $r('app.media.img_chat_idea_life'),
@@ -144,10 +147,6 @@ class ChatMediaParser {
   }
 }
 
-/**
- * 对应 iOS ChatView.swift。
- * 更新：热点话题欢迎页、入口按钮反选、图片附件。
- */
 @Component
 export struct ChatPanel {
   store: ChatStore = new ChatStore();
@@ -202,10 +201,8 @@ export struct ChatPanel {
         })
       }
 
-      // Image picker bottom sheet
       if (this.isImagePickerSheetVisible) {
         Column() {
-          // Dim tap-to-dismiss area above sheet
           Column()
             .layoutWeight(1)
             .width('100%')
@@ -213,9 +210,7 @@ export struct ChatPanel {
               this.isImagePickerSheetVisible = false;
             })
 
-          // Sheet anchored at bottom
           Column({ space: 0 }) {
-            // Drag handle
             Row()
               .width(36)
               .height(4)
@@ -235,7 +230,6 @@ export struct ChatPanel {
 
             // Options row — matches Android bottom_sheet_image_picker.xml
             Row({ space: 16 }) {
-              // Camera option
               Column({ space: 12 }) {
                 Column() {
                   Text('📷')
@@ -263,7 +257,6 @@ export struct ChatPanel {
                 this.pickImageFromCamera();
               })
 
-              // Gallery option
               Column({ space: 12 }) {
                 Column() {
                   Text('🖼')
@@ -374,7 +367,6 @@ export struct ChatPanel {
 
       Column({ space: 8 }) {
         if (this.hotspots.length > 0) {
-          // Dynamic hot topics from API
           ForEach(this.hotspots, (item: TodayHotspotItem, index: number) => {
             Row({ space: 8 }) {
               Column({ space: 6 }) {
@@ -412,7 +404,6 @@ export struct ChatPanel {
             })
           }, (item: TodayHotspotItem, index: number) => `hotspot-${index}`)
         } else {
-          // Fallback: static quick prompts
           ForEach(QUICK_PROMPTS, (item: QuickPrompt) => {
             Row({ space: 8 }) {
               Column({ space: 6 }) {
@@ -702,7 +693,6 @@ export struct ChatPanel {
   @Builder
   private composer() {
     Column({ space: 6 }) {
-      // Entry buttons row — ABOVE the composer card
       Scroll() {
         Row({ space: 8 }) {
           this.entryButton(Icons.photo, 'AI图文', ChatEntryMode.IMAGE)
@@ -715,10 +705,8 @@ export struct ChatPanel {
       .scrollBar(BarState.Off)
       .height(32)
 
-      // Composer card
       Stack({ alignContent: Alignment.Bottom }) {
         Column() {
-          // Image thumbnail at top-left when attached
           if (this.store.attachedImageBase64 !== null) {
             Row({ space: 8 }) {
               Stack() {
@@ -751,7 +739,6 @@ export struct ChatPanel {
             .padding({ left: 10, right: 10, top: 8 })
           }
 
-          // Text area takes full width
           TextArea({ text: this.store.draft, placeholder: this.composerHint() })
             .fontSize(15)
             .fontFamily('MiSans')
@@ -772,9 +759,7 @@ export struct ChatPanel {
         .width('100%')
         .constraintSize({ minHeight: 90 })
 
-        // Button overlay at bottom-right
         Row({ space: 6 }) {
-          // Attach button — only in IMAGE mode
           if (this.store.currentEntryMode === ChatEntryMode.IMAGE) {
             Text('📎')
               .fontSize(18)
@@ -786,7 +771,6 @@ export struct ChatPanel {
               })
           }
 
-          // Send / Stop button
           Button(this.store.isSending ? Icons.stop : Icons.send)
             .fontColor(Color.White)
             .width(52)
@@ -808,7 +792,6 @@ export struct ChatPanel {
       .backgroundColor(AgentClawDesign.controlSurface)
       .borderRadius(12)
 
-      // Disclaimer text
       Text('内容由AI生成，仅供参考')
         .fontSize(10)
         .fontFamily('MiSans-Normal')
@@ -861,17 +844,13 @@ export struct ChatPanel {
 
   private handleSend(): void {
     if (this.canSend()) {
-      // TextArea keeps the input session alive after submit unless it is stopped explicitly.
       inputMethod.getController().stopInputSession().catch(() => {});
       this.store.send();
-      // Clear local URI reference after send
       this.attachedImageUri = '';
     }
   }
 
   private pickImageFromCamera(): void {
-    // HarmonyOS camera: use picker.CameraPicker
-    // For now fallback to gallery picker since camera needs extra setup
     this.pickImage();
   }
 
@@ -887,7 +866,6 @@ export struct ChatPanel {
       const uri = result.photoUris[0];
       this.attachedImageUri = uri;
 
-      // Read file and convert to base64
       try {
         const file = fileIo.openSync(uri, fileIo.OpenMode.READ_ONLY);
         const stat = fileIo.statSync(file.fd);

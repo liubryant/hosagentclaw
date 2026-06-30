@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { webview } from '@kit.ArkWeb';
 import { AgentClawDesign } from '../../common/Design';
 import { Icons } from '../../common/Icons';
@@ -16,11 +20,6 @@ import { AppPreferences } from '../../storage/AppPreferences';
 
 type BottomTab = 'chat' | 'creation' | 'profile';
 
-/**
- * 对应 iOS ShellView.swift。
- * 重构：手机端使用底部 Tab 导航（画图 / 对话 / 我的），侧边栏通过按钮切换。
- * Android 布局：外层 #F5F5F5 背景，白色圆角卡片内容区，底部标签栏固定。
- */
 @Component
 export struct ShellPage {
   private store: ChatStore = new ChatStore();
@@ -61,18 +60,16 @@ export struct ShellPage {
     Stack() {
       Column() {
         Row() {
-          // Sidebar (hidden by default, only on chat tab)
           if (this.isSidebarVisible && this.activeTab === 'chat') {
             this.sidebar()
           }
 
-          // White card content area
           Column() {
-            // Chat header always shown
-            this.chatHeader()
-            Divider().color(AgentClawDesign.divider).strokeWidth(0.5)
+            if (!this.isCreationFullscreen) {
+              this.chatHeader()
+              Divider().color(AgentClawDesign.divider).strokeWidth(0.5)
+            }
 
-            // Content area switches per tab
             if (this.activeTab === 'creation') {
               CreationGalleryPage({
                 onLaunchImageChat: () => {
@@ -116,7 +113,6 @@ export struct ShellPage {
                 .layoutWeight(1)
             }
 
-            // Bottom tab bar — hidden when creation detail is fullscreen
             if (!this.isCreationFullscreen) {
               this.bottomTabBar()
             }
@@ -133,7 +129,6 @@ export struct ShellPage {
       .height('100%')
       .backgroundColor(AgentClawDesign.appBackground)
 
-      // Overlays
       if (this.isSettingsPresented) {
         SettingsPanel({
           store: this.store,
@@ -212,7 +207,6 @@ export struct ShellPage {
         .height('100%')
       }
 
-      // Full-screen WebView overlay — covers header too
       if (this.webViewUrl.length > 0) {
         Column() {
           Row({ space: 8 }) {
@@ -251,14 +245,13 @@ export struct ShellPage {
         .zIndex(999)
       }
 
-      // Generated video player — root-level overlay so it covers header and bottom navigation.
       if (this.fullscreenVideoURL.length > 0) {
         Stack() {
           if (this.fullscreenVideoCoverURL.length > 0) {
             Image(this.fullscreenVideoCoverURL)
               .width('100%')
               .height('100%')
-              .objectFit(ImageFit.Contain)
+              .objectFit(ImageFit.Cover)
               .opacity(0.32)
           }
 
@@ -266,8 +259,9 @@ export struct ShellPage {
             .width('100%')
             .height('100%')
             .objectFit(ImageFit.Contain)
-            .controls(true)
+            .controls(false)
             .autoPlay(true)
+            .loop(true)
             .onError(() => {
               this.videoPlaybackError = '视频加载失败，请检查网络后重试';
             })

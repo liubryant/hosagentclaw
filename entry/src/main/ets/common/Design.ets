@@ -1,5 +1,6 @@
 /**
- * 对应 iOS AgentClawDesign.swift 的设计常量。
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
  */
 export class AgentClawDesign {
   static readonly appBackground: string = '#F5F5F5';

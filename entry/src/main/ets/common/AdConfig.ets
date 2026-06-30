@@ -1,6 +1,6 @@
 /**
- * GroMore（穿山甲聚合）与友盟+ 的应用标识。
- * 对应 iOS PangleAdManager.swift / PangleSplashAdManager.swift / UMengAnalytics.swift 里的常量。
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
  */
 export class AdConfig {
   static readonly groMoreAppId: string = '5842720';

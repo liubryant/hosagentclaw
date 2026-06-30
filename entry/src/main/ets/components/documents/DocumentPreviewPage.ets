@@ -1,11 +1,12 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { webview } from '@kit.ArkWeb';
 import { fileIo } from '@kit.CoreFileKit';
 import { AgentClawDesign } from '../../common/Design';
 import { Icons } from '../../common/Icons';
 
-/**
- * 对应 iOS DocumentPreviewView.swift（WKWebView 预览）。
- */
 @Component
 export struct DocumentPreviewOverlay {
   documentPath: string = '';

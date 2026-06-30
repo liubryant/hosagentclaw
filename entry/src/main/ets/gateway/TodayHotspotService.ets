@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { http } from '@kit.NetworkKit';
 import { EnvironmentManager } from '../common/AppConfig';
 
@@ -18,11 +22,6 @@ interface HotspotResponse {
   data?: HotspotRawItem[];
 }
 
-/**
- * 获取今日热点推荐话题。
- * 对应 Android TodayHotspotService。
- * 调用 /im/bot/navi/hotspots 接口（API root，去掉 /v1 后缀）。
- */
 export class TodayHotspotService {
   private static instance: TodayHotspotService | null = null;
 

@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import {
   CSJAdSdk,
   SDKConfig,
@@ -8,10 +12,6 @@ import {
 import { AdConfig } from '../common/AdConfig';
 import { WindowStageHolder } from '../common/WindowStageHolder';
 
-/**
- * GroMore（穿山甲聚合）SDK 初始化封装。对应 iOS PangleAdManager.swift。
- * 合规要求：initialize() 只能在用户同意隐私政策后调用（调用方是 pages/Index.ets）。
- */
 export class GroMoreAdManager {
   private static instance: GroMoreAdManager | null = null;
 

@@ -1,9 +1,10 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { common, Want, wantConstant } from '@kit.AbilityKit';
 import { fileUri } from '@kit.CoreFileKit';
 
-/**
- * 对应 iOS DocumentExportView（UIActivityViewController）：把生成的文件交给系统分享面板。
- */
 export class ShareUtil {
   static async shareFile(context: common.UIAbilityContext, path: string, mimeType: string): Promise<void> {
     const uri = fileUri.getUriFromPath(path);

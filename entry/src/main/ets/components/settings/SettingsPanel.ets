@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { AgentClawDesign } from '../../common/Design';
 import { AppEnvironment, EnvironmentManager, environmentDisplayName } from '../../common/AppConfig';
 import { AppPreferences } from '../../storage/AppPreferences';
@@ -23,9 +27,6 @@ const AGREEMENT_URL = 'https://www.cjym123.cn/agreement_agentclaw.html';
 const PRIVACY_URL = 'https://www.cjym123.cn/privacy_agentclaw.html';
 const ICP_URL = 'https://beian.miit.gov.cn/';
 
-/**
- * 对应 iOS SettingsPanelView.swift（技能管理 / 关于我们 两个页签）。
- */
 @Component
 export struct SettingsPanel {
   store: ChatStore = new ChatStore();

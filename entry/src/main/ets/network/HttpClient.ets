@@ -1,8 +1,9 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { http } from '@kit.NetworkKit';
 
-/**
- * 对应 iOS HTTPClient.swift 的 HTTPClientError.statusCode。
- */
 export class HttpClientError extends Error {
   statusCode: number;
 
@@ -12,9 +13,6 @@ export class HttpClientError extends Error {
   }
 }
 
-/**
- * 对应 iOS URLSessionHTTPClient.swift，用 @ohos.net.http 实现一个轻量 JSON POST 客户端。
- */
 export class HttpClient {
   static async get(
     url: string,

@@ -1,11 +1,12 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { http } from '@kit.NetworkKit';
 import { fileIo } from '@kit.CoreFileKit';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
 import { abilityAccessCtrl, common, Permissions } from '@kit.AbilityKit';
 
-/**
- * 对应 iOS ChatView.swift 里 GeneratedImageView 的"保存到相册"逻辑。
- */
 export class ImageSaver {
   static async saveNetworkImageToGallery(context: common.UIAbilityContext, url: string): Promise<void> {
     const permission: Permissions = 'ohos.permission.WRITE_IMAGEVIDEO';

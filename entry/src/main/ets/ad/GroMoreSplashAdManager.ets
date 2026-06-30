@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import {
   CSJAdSdk,
   AdSlotBuilder,
@@ -12,11 +16,6 @@ import { AdConfig } from '../common/AdConfig';
 import { WindowStageHolder } from '../common/WindowStageHolder';
 import { GroMoreAdManager } from './GroMoreAdManager';
 
-/**
- * GroMore 开屏广告封装。对应 iOS PangleSplashAdManager.swift。
- * 每个进程生命周期只请求一次开屏（shouldRequestSplashThisSession），
- * 调用方（pages/Index.ets）会在请求前后配合一个超时兜底，避免开屏一直卡住首页。
- */
 export class GroMoreSplashAdManager {
   static readonly defaultSplashSlotId: string = AdConfig.splashAdSlotId;
   private static instance: GroMoreSplashAdManager | null = null;

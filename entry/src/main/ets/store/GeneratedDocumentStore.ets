@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { fileIo } from '@kit.CoreFileKit';
 import { common } from '@kit.AbilityKit';
 import { GeneratedDocument, newId } from '../model/ChatModels';
@@ -23,9 +27,6 @@ const REMOVABLE_BLOCK_PATTERN = /```(?:file|html|md|markdown|txt|text)[^\n`]*\n[
 const SAVED_LANGUAGES = ['file', 'html', 'md', 'markdown', 'txt', 'text'];
 const TEXTUAL_LANGUAGES = ['html', 'md', 'markdown', 'txt', 'text'];
 
-/**
- * 对应 iOS GeneratedDocumentStore.swift。
- */
 export class GeneratedDocumentStore {
   private static instance: GeneratedDocumentStore | null = null;
   private context: common.UIAbilityContext | null = null;

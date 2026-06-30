@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { AppPreferences } from '../storage/AppPreferences';
 import { OnboardingPage } from '../components/onboarding/OnboardingPage';
 import { ShellPage } from '../components/shell/ShellPage';
@@ -7,11 +11,6 @@ import { GroMoreSplashAdManager } from '../ad/GroMoreSplashAdManager';
 
 const SPLASH_TIMEOUT_FALLBACK_MS = 5000;
 
-/**
- * 对应 iOS ContentView.swift：隐私协议门槛 → （仅同意后）初始化统计/广告 SDK → 开屏广告 → 主界面。
- * 鸿蒙没有 iOS ATT 那一步（App Tracking Transparency 是 iOS 专属概念），其余流程与 iOS 版一致：
- * 友盟统计、GroMore 开屏广告都只在用户同意隐私政策后才会初始化。
- */
 @Entry
 @Component
 struct Index {

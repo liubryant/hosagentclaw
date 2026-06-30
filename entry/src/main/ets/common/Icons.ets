@@ -1,4 +1,8 @@
 /**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
+/**
  * 鸿蒙没有与 iOS SF Symbols 完全对应的图标集，这里用简单的 Unicode 符号近似替代，
  * 保证功能完整、视觉上可识别，不追求像素级还原图标字形。
  */

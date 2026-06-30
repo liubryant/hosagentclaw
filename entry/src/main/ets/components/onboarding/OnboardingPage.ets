@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { common } from '@kit.AbilityKit';
 import { webview } from '@kit.ArkWeb';
 import { AgentClawDesign } from '../../common/Design';
@@ -5,9 +9,6 @@ import { AgentClawDesign } from '../../common/Design';
 const AGREEMENT_URL = 'https://www.cjym123.cn/agreement_agentclaw.html';
 const PRIVACY_URL = 'https://www.cjym123.cn/privacy_agentclaw.html';
 
-/**
- * 对应 Android TermsDialog：个人信息保护提示，含复选框，协议链接用内置 WebView 打开。
- */
 @Component
 export struct OnboardingPage {
   onContinue: () => void = () => {};
@@ -30,9 +31,9 @@ export struct OnboardingPage {
         // Icon + title
         Column({ space: 10 }) {
           Image($r('app.media.app_icon_display'))
-            .width(72)
-            .height(72)
-            .borderRadius(16)
+            .width(56)
+            .height(56)
+            .borderRadius(13)
 
           Text('个人信息保护提示')
             .fontSize(16)
@@ -84,7 +85,7 @@ export struct OnboardingPage {
             .width('100%')
 
             Column({ space: 6 }) {
-              Text('1.   为了保障软件安全运行和账户安全，我们会申请收集您的设备信息、IP地址、MAC地址。').fontSize(12).fontFamily('MiSans').fontColor(AgentClawDesign.secondaryText).lineHeight(18)
+              Text('1.   为了保障软件安全运行和账户安全，我们会申请收集您的设备信息、IP地址、设备标识符。').fontSize(12).fontFamily('MiSans').fontColor(AgentClawDesign.secondaryText).lineHeight(18)
               Text('2.   保存图片、视频，需要使用您的存储、相机、麦克风权限。').fontSize(12).fontFamily('MiSans').fontColor(AgentClawDesign.secondaryText).lineHeight(18)
               Text('3.   我们可能会申请位置权限，用于为您推荐感兴趣的内容。').fontSize(12).fontFamily('MiSans').fontColor(AgentClawDesign.secondaryText).lineHeight(18)
               Text('4.   我们尊重您的选择权，您可以管理或删除您的个人数据，并通过反馈渠道联系我们。').fontSize(12).fontFamily('MiSans').fontColor(AgentClawDesign.secondaryText).lineHeight(18)

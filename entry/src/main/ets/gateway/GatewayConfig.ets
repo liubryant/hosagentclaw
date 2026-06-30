@@ -1,5 +1,6 @@
 /**
- * 对应 iOS GatewayConfig.swift。
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
  */
 export class GatewayConfig {
   baseURL: string;

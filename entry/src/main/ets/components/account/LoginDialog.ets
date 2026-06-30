@@ -1,3 +1,7 @@
+/**
+ * @author liuzheng
+ * @mail bryant_liu24@126.com
+ */
 import { common } from '@kit.AbilityKit';
 import { AgentClawDesign } from '../../common/Design';
 import { Icons } from '../../common/Icons';
