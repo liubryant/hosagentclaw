@@ -27,6 +27,10 @@ interface VideoOutput {
   coverURL: string | null;
 }
 
+interface ImageOutput {
+  url: string;
+}
+
 function normalizeGatewayBase(rawURL: string): string {
   let base = rawURL.trim();
   const hashIndex = base.indexOf('#');
@@ -136,6 +140,33 @@ export class GatewayClient {
     return firstContentOf(response);
   }
 
+  async generateImageEdit(prompt: string, imageBase64: string): Promise<string> {
+    const cleanPrompt = prompt.trim();
+    if (cleanPrompt.length === 0) {
+      throw new Error('图片编辑描述不能为空');
+    }
+    if (imageBase64.trim().length === 0) {
+      throw new Error('请选择要编辑的图片');
+    }
+
+    const body = JSON.stringify({
+      prompt: cleanPrompt,
+      image: `data:image/jpeg;base64,${imageBase64}`
+    });
+    const bodyText = await HttpClient.postJson(
+      `${normalizeGatewayBase(this.config.baseURL)}/images/edits`,
+      this.authHeaders(),
+      body,
+      AppConfig.mediaGenerationRequestTimeoutMs
+    );
+    const json = GatewayClient.decodeObject(bodyText);
+    const output = GatewayClient.imageOutput(json);
+    if (output === null) {
+      throw new Error('图片生成完成，但未返回可展示的图片地址');
+    }
+    return GatewayClient.imageMessage(cleanPrompt, output.url);
+  }
+
   /** Submit a CogVideo task and poll the task endpoint until a playable URL is returned. */
   async generateVideo(prompt: string, onStatus: (status: string) => void = () => {}): Promise<string> {
     const cleanPrompt = prompt.trim();
@@ -172,18 +203,17 @@ export class GatewayClient {
     onStatus(`视频生成任务已提交\n任务ID：${taskID}`);
 
     const deadline = Date.now() + VIDEO_POLL_TIMEOUT_MS;
+    let lastStatus = 'PROCESSING';
     while (Date.now() <= deadline) {
       const status = (GatewayClient.stringValue('task_status', latest) ??
         GatewayClient.stringValue('status', latest) ?? 'PROCESSING').toUpperCase();
+      lastStatus = status;
       const output = GatewayClient.videoOutput(latest);
       if (output !== null) {
         return GatewayClient.videoMessage(cleanPrompt, taskID, output);
       }
       if (['FAIL', 'FAILED', 'CANCELED', 'CANCELLED'].includes(status)) {
         throw new Error(`视频生成失败：${status}`);
-      }
-      if (['SUCCESS', 'SUCCEEDED', 'COMPLETED'].includes(status)) {
-        throw new Error(`视频任务已完成，但服务端未返回视频地址。任务ID：${taskID}`);
       }
 
       onStatus(`视频生成中，请稍候…\n任务ID：${taskID}\n状态：${status}`);
@@ -196,7 +226,7 @@ export class GatewayClient {
       latest = GatewayClient.decodeObject(pollText);
     }
 
-    throw new Error(`视频生成时间较长，请稍后再试。任务ID：${taskID}`);
+    throw new Error(`视频生成时间较长，请稍后再试。任务ID：${taskID}，最后状态：${lastStatus}`);
   }
 
   private authHeaders(): Record<string, string> {
@@ -284,13 +314,53 @@ export class GatewayClient {
         }
       }
     }
+    return GatewayClient.deepVideoOutput(root);
+  }
+
+  private static imageOutput(json: JsonObject): ImageOutput | null {
+    const root = GatewayClient.payload(json);
+    for (const key of ['data', 'images']) {
+      const value = root[key];
+      if (Array.isArray(value)) {
+        const items = value as Object[];
+        for (const item of items) {
+          if (item !== null && typeof item === 'object') {
+            const url = (item as JsonObject)['url'];
+            if (typeof url === 'string' && url.length > 0) {
+              return { url: url };
+            }
+          }
+        }
+      }
+    }
+
+    const choices = root['choices'];
+    if (Array.isArray(choices) && choices.length > 0) {
+      const choice = choices[0] as JsonObject;
+      const message = choice['message'] as JsonObject;
+      const images = message !== undefined ? message['images'] : undefined;
+      if (Array.isArray(images)) {
+        const imageItems = images as Object[];
+        for (const imageItem of imageItems) {
+          if (imageItem !== null && typeof imageItem === 'object') {
+            const nested = (imageItem as JsonObject)['image_url'];
+            if (nested !== undefined && nested !== null && typeof nested === 'object') {
+              const url = (nested as JsonObject)['url'];
+              if (typeof url === 'string' && url.length > 0) {
+                return { url: url };
+              }
+            }
+          }
+        }
+      }
+    }
     return null;
   }
 
   private static videoOutputInItem(item: JsonObject): VideoOutput | null {
     const coverValue = item['cover_image_url'] ?? item['coverImageUrl'] ?? item['cover_url'];
     const coverURL = typeof coverValue === 'string' && coverValue.length > 0 ? coverValue : null;
-    for (const key of ['url', 'video_url', 'videoUrl', 'play_url', 'playUrl']) {
+    for (const key of ['url', 'video_url', 'videoUrl', 'play_url', 'playUrl', 'output_url', 'file_url', 'download_url']) {
       const value = item[key];
       if (typeof value === 'string' && value.length > 0) {
         return { url: value, coverURL: coverURL };
@@ -305,6 +375,63 @@ export class GatewayClient {
     return null;
   }
 
+  private static deepVideoOutput(value: Object): VideoOutput | null {
+    if (Array.isArray(value)) {
+      const values = value as Object[];
+      for (const item of values) {
+        if (item !== null && typeof item === 'object') {
+          const found = GatewayClient.deepVideoOutput(item);
+          if (found !== null) {
+            return found;
+          }
+        } else if (typeof item === 'string' && GatewayClient.isVideoURL(item)) {
+          return { url: item, coverURL: null };
+        }
+      }
+      return null;
+    }
+
+    if (value === null || typeof value !== 'object') {
+      return typeof value === 'string' && GatewayClient.isVideoURL(value) ? { url: value, coverURL: null } : null;
+    }
+
+    const object = value as JsonObject;
+    const direct = GatewayClient.videoOutputInItem(object);
+    if (direct !== null && GatewayClient.isVideoURL(direct.url)) {
+      return direct;
+    }
+
+    let coverURL: string | null = null;
+    for (const coverKey of ['cover_image_url', 'coverImageUrl', 'cover_url']) {
+      const coverValue = object[coverKey];
+      if (typeof coverValue === 'string' && coverValue.length > 0) {
+        coverURL = coverValue;
+        break;
+      }
+    }
+
+    for (const key of Object.keys(object)) {
+      const child = object[key];
+      if (typeof child === 'string' && GatewayClient.isVideoURL(child)) {
+        return { url: child, coverURL: coverURL };
+      }
+      if (child !== undefined && child !== null && typeof child === 'object') {
+        const found = GatewayClient.deepVideoOutput(child);
+        if (found !== null) {
+          return coverURL !== null && found.coverURL === null ? { url: found.url, coverURL: coverURL } : found;
+        }
+      }
+    }
+    return null;
+  }
+
+  private static isVideoURL(value: string): boolean {
+    const lower = value.toLowerCase();
+    return lower.startsWith('http') &&
+      (lower.includes('.mp4') || lower.includes('.mov') || lower.includes('.m4v') ||
+        lower.includes('.webm') || lower.includes('.m3u8') || lower.includes('video'));
+  }
+
   private static videoMessage(prompt: string, taskID: string | null, output: VideoOutput): string {
     const lines = ['已为你生成视频。', '', `提示词：${prompt}`];
     if (taskID !== null) {
@@ -315,6 +442,10 @@ export class GatewayClient {
     }
     lines.push('', `视频链接1: ${output.url}`);
     return lines.join('\n');
+  }
+
+  private static imageMessage(prompt: string, url: string): string {
+    return `已为你生成图片。\n\n提示词：${prompt}\n\n图片链接1: ${url}`;
   }
 
   private static delay(milliseconds: number): Promise<void> {

@@ -17,6 +17,7 @@ class Key {
   static readonly chatHistorySnapshot = 'chat_history_snapshot';
   static readonly isLoggedIn = 'is_logged_in';
   static readonly userPhone = 'user_phone';
+  static readonly userAccessToken = 'user_access_token';
 }
 
 export class AppPreferences {
@@ -108,6 +109,20 @@ export class AppPreferences {
       this.safeStore.deleteSync(Key.userPhone);
     } else {
       this.safeStore.putSync(Key.userPhone, value);
+    }
+    this.safeStore.flush();
+  }
+
+  get userAccessToken(): string | null {
+    const raw = this.safeStore.getSync(Key.userAccessToken, '') as string;
+    return raw === '' ? null : raw;
+  }
+
+  set userAccessToken(value: string | null) {
+    if (value === null || value === '') {
+      this.safeStore.deleteSync(Key.userAccessToken);
+    } else {
+      this.safeStore.putSync(Key.userAccessToken, value);
     }
     this.safeStore.flush();
   }

@@ -4,15 +4,14 @@
  */
 import { common } from '@kit.AbilityKit';
 import { inputMethod } from '@kit.IMEKit';
-import { photoAccessHelper } from '@kit.MediaLibraryKit';
-import { fileIo } from '@kit.CoreFileKit';
-import { util } from '@kit.ArkTS';
+import { fileUri } from '@kit.CoreFileKit';
 import { AgentClawDesign } from '../../common/Design';
 import { Icons } from '../../common/Icons';
 import { ImageSaver } from '../../common/ImageSaver';
 import { ShareUtil } from '../../common/ShareUtil';
 import { ChatStore } from '../../store/ChatStore';
 import { GeneratedDocumentStore } from '../../store/GeneratedDocumentStore';
+import { AppPreferences } from '../../storage/AppPreferences';
 import { ChatEntryMode, ChatMessage, ChatRole, GeneratedDocument } from '../../model/ChatModels';
 import { DocumentPreviewOverlay } from '../documents/DocumentPreviewPage';
 import { TodayHotspotItem, TodayHotspotService } from '../../gateway/TodayHotspotService';
@@ -151,11 +150,12 @@ class ChatMediaParser {
 export struct ChatPanel {
   store: ChatStore = new ChatStore();
   onOpenVideo: (url: string, coverURL: string) => void = () => {};
+  onRequireLogin: () => void = () => {};
+  onImagePickerOpen: () => void = () => {};
+  onClearAttachedImage: () => void = () => {};
   @State private previewDocument: GeneratedDocument | null = null;
   @State private hotspots: TodayHotspotItem[] = [];
   @State private isLoadingHotspots: boolean = false;
-  @State private attachedImageUri: string = '';
-  @State private isImagePickerSheetVisible: boolean = false;
   @State private panelWidth: number = 360;
 
   aboutToAppear(): void {
@@ -201,101 +201,6 @@ export struct ChatPanel {
         })
       }
 
-      if (this.isImagePickerSheetVisible) {
-        Column() {
-          Column()
-            .layoutWeight(1)
-            .width('100%')
-            .onClick(() => {
-              this.isImagePickerSheetVisible = false;
-            })
-
-          Column({ space: 0 }) {
-            Row()
-              .width(36)
-              .height(4)
-              .borderRadius(2)
-              .backgroundColor('rgba(0,0,0,0.18)')
-              .margin({ top: 10, bottom: 0 })
-
-            // Title
-            Text('选择图片')
-              .fontSize(15)
-              .fontFamily('MiSans')
-              .fontWeight(FontWeight.Bold)
-              .fontColor(AgentClawDesign.primaryText)
-              .textAlign(TextAlign.Center)
-              .width('100%')
-              .margin({ top: 16, bottom: 4 })
-
-            // Options row — matches Android bottom_sheet_image_picker.xml
-            Row({ space: 16 }) {
-              Column({ space: 12 }) {
-                Column() {
-                  Text('📷')
-                    .fontSize(28)
-                    .fontColor(Color.White)
-                }
-                .width(72)
-                .height(72)
-                .borderRadius(36)
-                .justifyContent(FlexAlign.Center)
-                .backgroundColor('#4DADF7')
-
-                Text('拍照')
-                  .fontSize(13)
-                  .fontFamily('MiSans')
-                  .fontColor(AgentClawDesign.primaryText)
-              }
-              .justifyContent(FlexAlign.Center)
-              .layoutWeight(1)
-              .padding({ top: 24, bottom: 24 })
-              .backgroundColor('#F7F8FA')
-              .borderRadius(12)
-              .onClick(() => {
-                this.isImagePickerSheetVisible = false;
-                this.pickImageFromCamera();
-              })
-
-              Column({ space: 12 }) {
-                Column() {
-                  Text('🖼')
-                    .fontSize(28)
-                    .fontColor(Color.White)
-                }
-                .width(72)
-                .height(72)
-                .borderRadius(36)
-                .justifyContent(FlexAlign.Center)
-                .backgroundColor('#FF8C61')
-
-                Text('从相册选择')
-                  .fontSize(13)
-                  .fontFamily('MiSans')
-                  .fontColor(AgentClawDesign.primaryText)
-              }
-              .justifyContent(FlexAlign.Center)
-              .layoutWeight(1)
-              .padding({ top: 24, bottom: 24 })
-              .backgroundColor('#F7F8FA')
-              .borderRadius(12)
-              .onClick(() => {
-                this.isImagePickerSheetVisible = false;
-                this.pickImage();
-              })
-            }
-            .width('100%')
-            .padding({ left: 32, right: 32, top: 20, bottom: 4 })
-          }
-          .width('100%')
-          .backgroundColor(Color.White)
-          .borderRadius({ topLeft: 16, topRight: 16 })
-          .padding({ bottom: 24 })
-        }
-        .width('100%')
-        .height('100%')
-        .backgroundColor('rgba(0,0,0,0.4)')
-      }
     }
     .width('100%')
     .height('100%')
@@ -476,7 +381,12 @@ export struct ChatPanel {
         }
 
         if (this.bubbleImageURL(message) !== null) {
-          GeneratedImageView({ url: this.bubbleImageURL(message) as string })
+          GeneratedImageView({
+            url: this.bubbleImageURL(message) as string,
+            onSaved: (document: GeneratedDocument) => {
+              this.store.registerGeneratedDocument(document);
+            }
+          })
         }
 
         if (this.bubbleVideoURL(message) !== null) {
@@ -550,15 +460,14 @@ export struct ChatPanel {
 
       Column() {
         Text('▶')
-          .fontSize(20)
+          .fontSize(24)
           .fontColor(Color.White)
       }
-      .width(52)
-      .height(52)
-      .borderRadius(26)
+      .width(56)
+      .height(56)
+      .borderRadius(28)
       .justifyContent(FlexAlign.Center)
-      .backgroundColor('rgba(0,0,0,0.56)')
-      .border({ width: 1, color: 'rgba(255,255,255,0.5)' })
+      .backgroundColor('#66000000')
 
       Text('AI生成')
         .fontSize(10)
@@ -574,7 +483,7 @@ export struct ChatPanel {
     .clip(true)
     .backgroundColor('#20212B')
     .onClick(() => {
-      this.onOpenVideo(url, coverURL);
+      this.saveGeneratedVideoAndOpen(url, coverURL);
     })
   }
 
@@ -650,6 +559,19 @@ export struct ChatPanel {
     });
   }
 
+  private saveGeneratedVideoAndOpen(url: string, coverURL: string): void {
+    this.store.errorMessage = null;
+    GeneratedDocumentStore.shared.saveNetworkMedia(url, 'generated-video', 'video/mp4')
+      .then((document: GeneratedDocument) => {
+        this.store.registerGeneratedDocument(document);
+        this.onOpenVideo(fileUri.getUriFromPath(GeneratedDocumentStore.shared.fileURL(document)), coverURL);
+      })
+      .catch((error: Error) => {
+        this.store.errorMessage = `视频保存失败：${error.message}`;
+        this.onOpenVideo(url, coverURL);
+      });
+  }
+
   @Builder
   private thinkingIndicator() {
     Row({ space: 10 }) {
@@ -709,8 +631,8 @@ export struct ChatPanel {
         Column() {
           if (this.store.attachedImageBase64 !== null) {
             Row({ space: 8 }) {
-              Stack() {
-                Image(this.attachedImageUri.length > 0 ? this.attachedImageUri : '')
+              Stack({ alignContent: Alignment.TopEnd }) {
+                Image(this.store.attachedImageUri.length > 0 ? this.store.attachedImageUri : '')
                   .width(84)
                   .height(84)
                   .objectFit(ImageFit.Cover)
@@ -725,11 +647,9 @@ export struct ChatPanel {
                   .textAlign(TextAlign.Center)
                   .backgroundColor('rgba(0,0,0,0.55)')
                   .borderRadius(10)
-                  .alignSelf(ItemAlign.Start)
-                  .margin({ left: 62, top: 2 })
+                  .margin({ top: 4, right: 4 })
                   .onClick(() => {
-                    this.store.attachedImageBase64 = null;
-                    this.attachedImageUri = '';
+                    this.onClearAttachedImage();
                   })
               }
               .width(84)
@@ -757,17 +677,16 @@ export struct ChatPanel {
             })
         }
         .width('100%')
-        .constraintSize({ minHeight: 90 })
+        .constraintSize({ minHeight: 106 })
 
         Row({ space: 6 }) {
           if (this.store.currentEntryMode === ChatEntryMode.IMAGE) {
-            Text('📎')
-              .fontSize(18)
+            Image($rawfile('icons/ic_composer_attach.svg'))
               .width(26)
               .height(26)
-              .textAlign(TextAlign.Center)
+              .objectFit(ImageFit.Contain)
               .onClick(() => {
-                this.isImagePickerSheetVisible = true;
+                this.onImagePickerOpen();
               })
           }
 
@@ -788,7 +707,7 @@ export struct ChatPanel {
         .width('100%')
       }
       .width('100%')
-      .constraintSize({ minHeight: 90 })
+      .constraintSize({ minHeight: 122 })
       .backgroundColor(AgentClawDesign.controlSurface)
       .borderRadius(12)
 
@@ -799,7 +718,7 @@ export struct ChatPanel {
         .width('100%')
         .textAlign(TextAlign.Center)
     }
-    .padding({ left: 12, right: 12, top: 8, bottom: 12 })
+    .padding({ left: 12, right: 12, top: 8, bottom: 18 })
     .backgroundColor(Color.White)
   }
 
@@ -823,7 +742,7 @@ export struct ChatPanel {
     .borderRadius(12)
     .onClick(() => {
       this.store.createSession(mode);
-      this.attachedImageUri = '';
+      this.onClearAttachedImage();
     })
   }
 
@@ -844,54 +763,23 @@ export struct ChatPanel {
 
   private handleSend(): void {
     if (this.canSend()) {
-      inputMethod.getController().stopInputSession().catch(() => {});
-      this.store.send();
-      this.attachedImageUri = '';
-    }
-  }
-
-  private pickImageFromCamera(): void {
-    this.pickImage();
-  }
-
-  private pickImage(): void {
-    const picker = new photoAccessHelper.PhotoViewPicker();
-    picker.select({
-      MIMEType: photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE,
-      maxSelectNumber: 1
-    }).then((result) => {
-      if (result.photoUris.length === 0) {
+      if (!AppPreferences.shared.isLoggedIn) {
+        this.onRequireLogin();
         return;
       }
-      const uri = result.photoUris[0];
-      this.attachedImageUri = uri;
-
-      try {
-        const file = fileIo.openSync(uri, fileIo.OpenMode.READ_ONLY);
-        const stat = fileIo.statSync(file.fd);
-        const buffer = new ArrayBuffer(stat.size);
-        fileIo.readSync(file.fd, buffer);
-        fileIo.closeSync(file.fd);
-        const base64Helper = new util.Base64Helper();
-        this.store.attachedImageBase64 = base64Helper.encodeToStringSync(new Uint8Array(buffer));
-        this.store.updateEntryMode(ChatEntryMode.IMAGE);
-      } catch (e) {
-        console.error('[ChatPanel] Failed to read image file:', e);
-        this.attachedImageUri = '';
-        this.store.attachedImageBase64 = null;
-      }
-    }).catch((e: Error) => {
-      console.warn('[ChatPanel] Image picker cancelled or failed:', e);
-    });
+      inputMethod.getController().stopInputSession().catch(() => {});
+      this.store.send();
+      this.onClearAttachedImage();
+    }
   }
 }
 
 @Component
 struct GeneratedImageView {
   url: string = '';
+  onSaved: (document: GeneratedDocument) => void = () => {};
   @State private isSaving: boolean = false;
   @State private loadFailed: boolean = false;
-  @State private alertMessage: string | null = null;
 
   build() {
     Stack() {
@@ -922,25 +810,18 @@ struct GeneratedImageView {
     const context = getContext(this) as common.UIAbilityContext;
     ImageSaver.saveNetworkImageToGallery(context, this.url)
       .then(() => {
-        this.alertMessage = '已保存到相册';
+        return GeneratedDocumentStore.shared.saveNetworkMedia(this.url, 'generated-image', 'image/png');
       })
+      .then((document: GeneratedDocument) => {
+        this.onSaved(document);
+        return document;
+      })
+      .then(() => {})
       .catch((error: Error) => {
-        this.alertMessage = `图片保存失败：${error.message}`;
+        console.warn(`[GeneratedImageView] 图片保存失败：${error.message}`);
       })
       .finally(() => {
         this.isSaving = false;
-        if (this.alertMessage !== null) {
-          AlertDialog.show({
-            title: '图片保存',
-            message: this.alertMessage,
-            confirm: {
-              value: '确定',
-              action: () => {
-                this.alertMessage = null;
-              }
-            }
-          });
-        }
       });
   }
 }

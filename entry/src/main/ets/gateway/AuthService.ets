@@ -14,16 +14,20 @@ import { HttpClient } from '../network/HttpClient';
 export class LoginResult {
   phone: string;
   isNewUser: boolean;
+  accessToken: string;
 
-  constructor(phone: string, isNewUser: boolean) {
+  constructor(phone: string, isNewUser: boolean, accessToken: string = '') {
     this.phone = phone;
     this.isNewUser = isNewUser;
+    this.accessToken = accessToken;
   }
 }
 
 interface AuthResponseData {
   phone?: string;
   newUser?: boolean;
+  accessToken?: string;
+  token?: string;
 }
 
 interface AuthResponse {
@@ -112,7 +116,11 @@ export class AuthService {
       throw new AuthServiceError(response.msg && response.msg.length > 0 ? response.msg : '登录失败，请稍后重试');
     }
     const data = response.data;
-    return new LoginResult(data?.phone && data.phone.length > 0 ? data.phone : phone, data?.newUser ?? false);
+    return new LoginResult(
+      data?.phone && data.phone.length > 0 ? data.phone : phone,
+      data?.newUser ?? false,
+      data?.accessToken && data.accessToken.length > 0 ? data.accessToken : (data?.token ?? '')
+    );
   }
 
   async loginByPassword(phone: string, password: string): Promise<LoginResult> {
@@ -128,7 +136,11 @@ export class AuthService {
       throw new AuthServiceError(response.msg && response.msg.length > 0 ? response.msg : '登录失败，请稍后重试');
     }
     const data = response.data;
-    return new LoginResult(data?.phone && data.phone.length > 0 ? data.phone : phone, data?.newUser ?? false);
+    return new LoginResult(
+      data?.phone && data.phone.length > 0 ? data.phone : phone,
+      data?.newUser ?? false,
+      data?.accessToken && data.accessToken.length > 0 ? data.accessToken : (data?.token ?? '')
+    );
   }
 
   async setPassword(phone: string, code: string, password: string): Promise<void> {

@@ -107,10 +107,23 @@ export struct CreationGalleryPage {
   @State private activeTab: number = 0;
   @State private fullscreenImage: string = '';
   @State private fullscreenVideo: string = '';
+  @State private displayedImageFiles: string[] = IMAGE_FILES;
   @State private videoThumbnails: (image.PixelMap | undefined)[] = [];
 
   aboutToAppear(): void {
+    this.displayedImageFiles = this.shuffledImageFiles();
     this.loadVideoThumbnails();
+  }
+
+  private shuffledImageFiles(): string[] {
+    const files = IMAGE_FILES.slice();
+    for (let index = files.length - 1; index > 0; index--) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      const current = files[index];
+      files[index] = files[randomIndex];
+      files[randomIndex] = current;
+    }
+    return files;
   }
 
   private async loadVideoThumbnails(): Promise<void> {
@@ -127,22 +140,12 @@ export struct CreationGalleryPage {
           offset: rawFd.offset,
           length: rawFd.length
         };
-        // 取第 1 秒附近的关键帧，避开部分视频开头的纯黑场。
+        // 取原始比例关键帧，避免按固定尺寸取帧导致竖屏/宽屏视频封面被拉伸。
         const thumbnail = await generator.fetchFrameByTime(
           1000000,
           media.AVImageQueryOptions.AV_IMAGE_QUERY_CLOSEST_SYNC,
-          { width: 480, height: 320 }
+          {}
         );
-        const info = await thumbnail.getImageInfo();
-        const w = info.size.width;
-        const h = info.size.height;
-        if (w > h) {
-          const cx = Math.floor((w - h) / 2);
-          await thumbnail.crop({ x: cx, y: 0, size: { width: h, height: h } });
-        } else if (h > w) {
-          const cy = Math.floor((h - w) / 2);
-          await thumbnail.crop({ x: 0, y: cy, size: { width: w, height: w } });
-        }
         const updated = this.videoThumbnails.slice();
         updated[index] = thumbnail;
         this.videoThumbnails = updated;
@@ -260,7 +263,7 @@ export struct CreationGalleryPage {
 
       // Image grid (2 columns)
       Grid() {
-        ForEach(IMAGE_FILES, (filename: string) => {
+        ForEach(this.displayedImageFiles, (filename: string) => {
           GridItem() {
             Image($rawfile('creation/images/' + filename))
               .width('100%')

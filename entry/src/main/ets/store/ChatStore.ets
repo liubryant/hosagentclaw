@@ -56,6 +56,7 @@ export class ChatStore {
   @Trace generationStatus: string = '';
   @Trace errorMessage: string | null = null;
   @Trace attachedImageBase64: string | null = null;
+  @Trace attachedImageUri: string = '';
   @Trace currentEntryMode: ChatEntryMode = ChatEntryMode.DEFAULT;
 
   private statusTimer: number = -1;
@@ -111,6 +112,30 @@ export class ChatStore {
     return this.currentEntryMode;
   }
 
+  registerGeneratedDocument(document: GeneratedDocument): void {
+    const sessionId = this.selectedSessionID;
+    const messages = [...(this.messagesBySession[sessionId] ?? [])];
+    const existing = messages.some(message =>
+      message.generatedDocuments.some(item => item.relativePath === document.relativePath)
+    );
+    if (existing) {
+      return;
+    }
+
+    for (let index = messages.length - 1; index >= 0; index -= 1) {
+      if (messages[index].role === ChatRole.ASSISTANT) {
+        const nextMessage = ChatMessage.fromPlain(messages[index]);
+        nextMessage.generatedDocuments = [...nextMessage.generatedDocuments, document];
+        messages[index] = nextMessage;
+        this.messagesBySession[sessionId] = messages;
+        this.messages = messages;
+        this.touchSession(sessionId);
+        this.saveHistory();
+        return;
+      }
+    }
+  }
+
   createSession(entryMode: ChatEntryMode = ChatEntryMode.DEFAULT): void {
     const session = new LocalChatSession();
     this.sessions = [session, ...this.sessions];
@@ -121,6 +146,7 @@ export class ChatStore {
     this.messages = [];
     this.draft = '';
     this.attachedImageBase64 = null;
+    this.attachedImageUri = '';
     this.errorMessage = null;
     this.saveHistory();
   }
@@ -135,6 +161,7 @@ export class ChatStore {
     }
     this.currentEntryMode = ChatEntryMode.DEFAULT;
     this.attachedImageBase64 = null;
+    this.attachedImageUri = '';
     this.saveHistory();
   }
 
@@ -155,6 +182,8 @@ export class ChatStore {
     this.messages = this.messagesBySession[session.id] ?? [];
     this.currentEntryMode = this.entryModesBySession[session.id] ?? ChatEntryMode.DEFAULT;
     this.draft = '';
+    this.attachedImageBase64 = null;
+    this.attachedImageUri = '';
     this.errorMessage = null;
     this.saveHistory();
   }
@@ -189,6 +218,7 @@ export class ChatStore {
     // Capture and clear image before building messages
     const imageBase64 = this.attachedImageBase64;
     this.attachedImageBase64 = null;
+    this.attachedImageUri = '';
 
     const userMessage = new ChatMessage();
     userMessage.id = newId();
@@ -208,20 +238,13 @@ export class ChatStore {
     }
 
     const sessionIdAtSend = this.selectedSessionID;
-    const requestMessages = (this.messagesBySession[sessionIdAtSend] ?? []).map((message): ChatMessage => {
-      if (message.id !== userMessage.id) {
-        return message;
-      }
-      const outbound = ChatMessage.fromPlain(message);
-      outbound.content = this.outboundContent(text, entryMode, imageBase64);
-      return outbound;
-    });
-
-    const generation = entryMode === ChatEntryMode.VIDEO && imageBase64 === null
+    const generation = imageBase64 !== null
+      ? GatewayClient.shared.generateImageEdit(text, imageBase64)
+      : entryMode === ChatEntryMode.VIDEO
       ? GatewayClient.shared.generateVideo(text, (status: string) => {
         this.generationStatus = status;
       })
-      : GatewayClient.shared.sendChat(requestMessages);
+      : GatewayClient.shared.sendChat(this.requestMessages(sessionIdAtSend, userMessage.id, text, entryMode));
 
     generation
       .then((reply: string) => {
@@ -277,12 +300,7 @@ export class ChatStore {
     AppPreferences.shared.chatHistorySnapshot = null;
   }
 
-  private outboundContent(text: string, entryMode: ChatEntryMode, imageBase64: string | null = null): string {
-    // Always route to image API when an image is attached, regardless of entry mode
-    if (imageBase64 !== null) {
-      const imageDataUri = `data:image/jpeg;base64,${imageBase64}`;
-      return `[[IMAGE_MODE]] ${imageDataUri}\n${text}`;
-    }
+  private outboundContent(text: string, entryMode: ChatEntryMode): string {
     if (entryMode === ChatEntryMode.IMAGE) {
       return `[[IMAGE_MODE]] ${text}`;
     }
@@ -293,6 +311,17 @@ export class ChatStore {
       return `[[DOCUMENT_MODE]] ${DOCUMENT_GENERATION_INSTRUCTION}\n\n用户需求：${text}`;
     }
     return text;
+  }
+
+  private requestMessages(sessionId: string, userMessageId: string, text: string, entryMode: ChatEntryMode): ChatMessage[] {
+    return (this.messagesBySession[sessionId] ?? []).map((message): ChatMessage => {
+      if (message.id !== userMessageId) {
+        return message;
+      }
+      const outbound = ChatMessage.fromPlain(message);
+      outbound.content = this.outboundContent(text, entryMode);
+      return outbound;
+    });
   }
 
   private shouldRequestDocumentFile(text: string): boolean {

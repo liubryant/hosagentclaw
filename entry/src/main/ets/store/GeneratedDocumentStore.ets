@@ -4,6 +4,7 @@
  */
 import { fileIo } from '@kit.CoreFileKit';
 import { common } from '@kit.AbilityKit';
+import { http } from '@kit.NetworkKit';
 import { GeneratedDocument, newId } from '../model/ChatModels';
 
 export class GeneratedDocumentSaveResult {
@@ -54,6 +55,38 @@ export class GeneratedDocumentStore {
 
   fileURL(document: GeneratedDocument): string {
     return `${this.exportsDirectory}/${document.relativePath}`;
+  }
+
+  async saveNetworkMedia(url: string, defaultPrefix: string, fallbackMimeType: string): Promise<GeneratedDocument> {
+    this.createExportsDirectoryIfNeeded();
+    const fileName = this.generatedFileName(url, defaultPrefix, fallbackMimeType);
+    const finalPath = this.uniquePath(fileName);
+    const request = http.createHttp();
+    let buffer: ArrayBuffer;
+    try {
+      const response = await request.request(url, { expectDataType: http.HttpDataType.ARRAY_BUFFER });
+      if (response.responseCode < 200 || response.responseCode >= 300) {
+        throw new Error(`下载失败：HTTP ${response.responseCode}`);
+      }
+      buffer = response.result as ArrayBuffer;
+    } finally {
+      request.destroy();
+    }
+
+    const file = fileIo.openSync(finalPath, fileIo.OpenMode.CREATE | fileIo.OpenMode.READ_WRITE | fileIo.OpenMode.TRUNC);
+    try {
+      fileIo.writeSync(file.fd, buffer);
+    } finally {
+      fileIo.closeSync(file);
+    }
+
+    const document = new GeneratedDocument();
+    document.id = newId();
+    document.displayName = this.lastPathComponent(finalPath);
+    document.relativePath = this.lastPathComponent(finalPath);
+    document.mimeType = this.mimeType(this.fileExtension(finalPath), fallbackMimeType);
+    document.createdAt = Date.now();
+    return document;
   }
 
   saveGeneratedDocuments(assistantContent: string, fallbackTitle: string): GeneratedDocumentSaveResult {
@@ -178,8 +211,64 @@ export class GeneratedDocumentStore {
     return 'txt';
   }
 
-  private mimeType(ext: string): string {
+  private generatedFileName(url: string, defaultPrefix: string, fallbackMimeType: string): string {
+    const cleanURL = url.split('?')[0].split('#')[0];
+    const parts = cleanURL.split('/');
+    const rawName = decodeURIComponent(parts[parts.length - 1] ?? '').replace(/[\\/:*?"<>|]/g, '_').trim();
+    if (rawName.length > 0 && rawName.includes('.')) {
+      return rawName;
+    }
+    const hash = this.simpleHash(url);
+    const base = rawName.length > 0 ? rawName : defaultPrefix;
+    return `${base}-${hash}.${this.extensionForMimeType(fallbackMimeType)}`;
+  }
+
+  private extensionForMimeType(mimeType: string): string {
+    const lower = mimeType.toLowerCase();
+    if (lower === 'image/jpeg' || lower === 'image/jpg') {
+      return 'jpg';
+    }
+    if (lower === 'image/webp') {
+      return 'webp';
+    }
+    if (lower === 'image/gif') {
+      return 'gif';
+    }
+    if (lower === 'video/mp4') {
+      return 'mp4';
+    }
+    if (lower === 'video/quicktime') {
+      return 'mov';
+    }
+    if (lower === 'video/webm') {
+      return 'webm';
+    }
+    return lower.startsWith('video/') ? 'mp4' : 'png';
+  }
+
+  private mimeType(ext: string, fallback: string = 'application/octet-stream'): string {
     const lower = ext.toLowerCase();
+    if (lower === 'png') {
+      return 'image/png';
+    }
+    if (lower === 'jpg' || lower === 'jpeg') {
+      return 'image/jpeg';
+    }
+    if (lower === 'webp') {
+      return 'image/webp';
+    }
+    if (lower === 'gif') {
+      return 'image/gif';
+    }
+    if (lower === 'mp4') {
+      return 'video/mp4';
+    }
+    if (lower === 'mov') {
+      return 'video/quicktime';
+    }
+    if (lower === 'webm') {
+      return 'video/webm';
+    }
     if (lower === 'html' || lower === 'htm') {
       return 'text/html';
     }
@@ -189,7 +278,15 @@ export class GeneratedDocumentStore {
     if (lower === 'txt') {
       return 'text/plain';
     }
-    return 'application/octet-stream';
+    return fallback;
+  }
+
+  private simpleHash(text: string): string {
+    let hash = 0;
+    for (let index = 0; index < text.length; index += 1) {
+      hash = ((hash << 5) - hash + text.charCodeAt(index)) | 0;
+    }
+    return Math.abs(hash).toString(16);
   }
 
   private lastPathComponent(path: string): string {

@@ -200,6 +200,7 @@ export struct LoginDialog {
   private logout(): void {
     AppPreferences.shared.isLoggedIn = false;
     AppPreferences.shared.userPhone = null;
+    AppPreferences.shared.userAccessToken = null;
     this.onClose();
   }
 
@@ -579,6 +580,9 @@ export struct LoginDialog {
       .then((result) => {
         AppPreferences.shared.isLoggedIn = true;
         AppPreferences.shared.userPhone = result.phone;
+        if (result.accessToken.length > 0) {
+          AppPreferences.shared.userAccessToken = result.accessToken;
+        }
         this.isLoggingIn = false;
         this.onClose();
       })

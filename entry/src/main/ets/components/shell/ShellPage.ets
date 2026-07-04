@@ -3,6 +3,10 @@
  * @mail bryant_liu24@126.com
  */
 import { webview } from '@kit.ArkWeb';
+import { photoAccessHelper } from '@kit.MediaLibraryKit';
+import { fileIo } from '@kit.CoreFileKit';
+import { image } from '@kit.ImageKit';
+import { util } from '@kit.ArkTS';
 import { AgentClawDesign } from '../../common/Design';
 import { Icons } from '../../common/Icons';
 import { ChatStore } from '../../store/ChatStore';
@@ -16,7 +20,9 @@ import { DocumentsListPage } from '../documents/DocumentsListPage';
 import { LoginDialog } from '../account/LoginDialog';
 import { CreationGalleryPage } from '../creation/CreationGalleryPage';
 import { ProfilePage } from '../profile/ProfilePage';
+import { VipMembershipPage } from '../vip/VipMembershipPage';
 import { AppPreferences } from '../../storage/AppPreferences';
+import { SystemBarStyle } from '../../common/SystemBarStyle';
 
 type BottomTab = 'chat' | 'creation' | 'profile';
 
@@ -25,10 +31,12 @@ export struct ShellPage {
   private store: ChatStore = new ChatStore();
   @State private activeTab: BottomTab = 'creation';
   @State private isSidebarVisible: boolean = true;
+  @State private isImagePickerSheetVisible: boolean = false;
   @State private isCreationFullscreen: boolean = false;
   @State private isSettingsPresented: boolean = false;
   @State private isDocumentsPresented: boolean = false;
   @State private isLoginPresented: boolean = false;
+  @State private isVipPresented: boolean = false;
   @State private isIdeasPresented: boolean = false;
   @State private sidebarQuery: string = '';
   @State private webViewUrl: string = '';
@@ -41,12 +49,117 @@ export struct ShellPage {
   @State private userPhone: string = '';
 
   aboutToAppear(): void {
+    SystemBarStyle.restoreDefault();
     this.refreshLoginState();
   }
 
   private refreshLoginState(): void {
     this.isLoggedIn = AppPreferences.shared.isLoggedIn;
     this.userPhone = AppPreferences.shared.userPhone ?? '';
+  }
+
+  private openVipPage(): void {
+    this.isVipPresented = true;
+    SystemBarStyle.applyVip();
+  }
+
+  private closeVipPage(): void {
+    this.isVipPresented = false;
+    SystemBarStyle.restoreDefault();
+    this.refreshLoginState();
+  }
+
+  private openFullscreenVideo(url: string, coverURL: string): void {
+    this.fullscreenVideoURL = url;
+    this.fullscreenVideoCoverURL = coverURL;
+    this.videoPlaybackError = '';
+    SystemBarStyle.applyVideo();
+  }
+
+  private closeFullscreenVideo(): void {
+    this.fullscreenVideoURL = '';
+    this.fullscreenVideoCoverURL = '';
+    this.videoPlaybackError = '';
+    SystemBarStyle.restoreDefault();
+  }
+
+  private clearAttachedImage(): void {
+    this.store.attachedImageUri = '';
+    this.store.attachedImageBase64 = null;
+  }
+
+  private closeImagePickerSheet(): void {
+    this.isImagePickerSheetVisible = false;
+  }
+
+  private pickImageFromCamera(): void {
+    this.pickImage();
+  }
+
+  private pickImage(): void {
+    const picker = new photoAccessHelper.PhotoViewPicker();
+    picker.select({
+      MIMEType: photoAccessHelper.PhotoViewMIMETypes.IMAGE_TYPE,
+      maxSelectNumber: 1
+    }).then((result) => {
+      if (result.photoUris.length === 0) {
+        return;
+      }
+      const uri = result.photoUris[0];
+      this.store.attachedImageUri = uri;
+
+      this.encodeImageToBase64(uri).then((base64: string) => {
+        this.store.attachedImageBase64 = base64;
+        this.store.updateEntryMode(ChatEntryMode.IMAGE);
+      }).catch((e: Error) => {
+        console.error('[ShellPage] Failed to read image file:', e);
+        this.clearAttachedImage();
+      });
+    }).catch((e: Error) => {
+      console.warn('[ShellPage] Image picker cancelled or failed:', e);
+    });
+  }
+
+  private async encodeImageToBase64(uri: string): Promise<string> {
+    const file = fileIo.openSync(uri, fileIo.OpenMode.READ_ONLY);
+    let sourceBuffer: ArrayBuffer;
+    try {
+      const stat = fileIo.statSync(file.fd);
+      sourceBuffer = new ArrayBuffer(stat.size);
+      fileIo.readSync(file.fd, sourceBuffer);
+    } finally {
+      fileIo.closeSync(file.fd);
+    }
+
+    try {
+      const imageSource = image.createImageSource(sourceBuffer);
+      const pixelMap = await imageSource.createPixelMap();
+      try {
+        const info = await pixelMap.getImageInfo();
+        const maxDim = 1024;
+        const width = info.size.width;
+        const height = info.size.height;
+        if (width > maxDim || height > maxDim) {
+          const ratio = Math.min(maxDim / width, maxDim / height);
+          await pixelMap.scale(ratio, ratio);
+        }
+
+        const packer = image.createImagePacker();
+        try {
+          const jpegBuffer = await packer.packToData(pixelMap, { format: 'image/jpeg', quality: 85 });
+          const base64Helper = new util.Base64Helper();
+          return base64Helper.encodeToStringSync(new Uint8Array(jpegBuffer));
+        } finally {
+          await packer.release();
+        }
+      } finally {
+        await pixelMap.release();
+        await imageSource.release();
+      }
+    } catch (_) {
+      const base64Helper = new util.Base64Helper();
+      return base64Helper.encodeToStringSync(new Uint8Array(sourceBuffer));
+    }
   }
 
   private maskedPhone(phone: string): string {
@@ -98,6 +211,9 @@ export struct ShellPage {
                 onOpenWebView: (url: string, title: string) => {
                   this.webViewUrl = url;
                   this.webViewTitle = title;
+                },
+                onOpenVip: () => {
+                  this.openVipPage();
                 }
               })
                 .layoutWeight(1)
@@ -105,9 +221,19 @@ export struct ShellPage {
               ChatPanel({
                 store: this.store,
                 onOpenVideo: (url: string, coverURL: string) => {
-                  this.fullscreenVideoURL = url;
-                  this.fullscreenVideoCoverURL = coverURL;
-                  this.videoPlaybackError = '';
+                  this.openFullscreenVideo(url, coverURL);
+                },
+                onRequireLogin: () => {
+                  this.refreshLoginState();
+                  if (!this.isLoggedIn) {
+                    this.isLoginPresented = true;
+                  }
+                },
+                onImagePickerOpen: () => {
+                  this.isImagePickerSheetVisible = true;
+                },
+                onClearAttachedImage: () => {
+                  this.clearAttachedImage();
                 }
               })
                 .layoutWeight(1)
@@ -147,6 +273,10 @@ export struct ShellPage {
           store: this.store,
           onClose: () => {
             this.isDocumentsPresented = false;
+          },
+          onOpenVideo: (url: string, coverURL: string) => {
+            this.isDocumentsPresented = false;
+            this.openFullscreenVideo(url, coverURL);
           }
         })
       }
@@ -158,6 +288,34 @@ export struct ShellPage {
             this.refreshLoginState();
           }
         })
+      }
+
+      if (this.isVipPresented) {
+        VipMembershipPage({
+          onClose: () => {
+            this.closeVipPage();
+          },
+          onRequireLogin: () => {
+            this.refreshLoginState();
+            if (!this.isLoggedIn) {
+              this.closeVipPage();
+              this.isLoginPresented = true;
+            }
+          },
+          onOpenWebView: (url: string, title: string) => {
+            this.closeVipPage();
+            this.webViewUrl = url;
+            this.webViewTitle = title;
+          }
+        })
+          .width('100%')
+          .height('100%')
+          .position({ x: 0, y: 0 })
+          .zIndex(1001)
+      }
+
+      if (this.isImagePickerSheetVisible) {
+        this.imagePickerSheet()
       }
 
       if (this.isIdeasPresented) {
@@ -285,9 +443,7 @@ export struct ShellPage {
             .borderRadius(22)
             .position({ x: 18, y: 54 })
             .onClick(() => {
-              this.fullscreenVideoURL = '';
-              this.fullscreenVideoCoverURL = '';
-              this.videoPlaybackError = '';
+              this.closeFullscreenVideo();
             })
         }
         .width('100%')
@@ -400,12 +556,112 @@ export struct ShellPage {
         this.sidebarNavItem(Icons.sidebar, '设置', '技能和关于', () => {
           this.isSettingsPresented = true;
         })
+        this.sidebarVipItem(() => {
+          this.openVipPage();
+        })
       }
     }
     .width('40%')
     .padding({ left: 12, right: 10, top: 16, bottom: 16 })
     .height('100%')
     .backgroundColor(AgentClawDesign.sidebarBackground)
+  }
+
+  @Builder
+  private imagePickerSheet() {
+    Column() {
+      Column()
+        .layoutWeight(1)
+        .width('100%')
+        .onClick(() => {
+          this.closeImagePickerSheet();
+        })
+
+      Column({ space: 0 }) {
+        Row()
+          .width(36)
+          .height(4)
+          .borderRadius(2)
+          .backgroundColor('rgba(0,0,0,0.18)')
+          .margin({ top: 10, bottom: 0 })
+
+        Text('选择图片')
+          .fontSize(15)
+          .fontFamily('MiSans')
+          .fontWeight(FontWeight.Bold)
+          .fontColor(AgentClawDesign.primaryText)
+          .textAlign(TextAlign.Center)
+          .width('100%')
+          .margin({ top: 16, bottom: 4 })
+
+        Row({ space: 16 }) {
+          Column({ space: 12 }) {
+            Column() {
+              Text('📷')
+                .fontSize(28)
+                .fontColor(Color.White)
+            }
+            .width(72)
+            .height(72)
+            .borderRadius(36)
+            .justifyContent(FlexAlign.Center)
+            .backgroundColor('#4DADF7')
+
+            Text('拍照')
+              .fontSize(13)
+              .fontFamily('MiSans')
+              .fontColor(AgentClawDesign.primaryText)
+          }
+          .justifyContent(FlexAlign.Center)
+          .layoutWeight(1)
+          .padding({ top: 24, bottom: 24 })
+          .backgroundColor('#F7F8FA')
+          .borderRadius(12)
+          .onClick(() => {
+            this.closeImagePickerSheet();
+            this.pickImageFromCamera();
+          })
+
+          Column({ space: 12 }) {
+            Column() {
+              Text('🖼')
+                .fontSize(28)
+                .fontColor(Color.White)
+            }
+            .width(72)
+            .height(72)
+            .borderRadius(36)
+            .justifyContent(FlexAlign.Center)
+            .backgroundColor('#FF8C61')
+
+            Text('从相册选择')
+              .fontSize(13)
+              .fontFamily('MiSans')
+              .fontColor(AgentClawDesign.primaryText)
+          }
+          .justifyContent(FlexAlign.Center)
+          .layoutWeight(1)
+          .padding({ top: 24, bottom: 24 })
+          .backgroundColor('#F7F8FA')
+          .borderRadius(12)
+          .onClick(() => {
+            this.closeImagePickerSheet();
+            this.pickImage();
+          })
+        }
+        .width('100%')
+        .padding({ left: 32, right: 32, top: 20, bottom: 4 })
+      }
+      .width('100%')
+      .backgroundColor(Color.White)
+      .borderRadius({ topLeft: 16, topRight: 16 })
+      .padding({ bottom: 24 })
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('rgba(0,0,0,0.4)')
+    .position({ x: 0, y: 0 })
+    .zIndex(1002)
   }
 
   @Builder
@@ -542,6 +798,38 @@ export struct ShellPage {
     .padding({ left: 10, right: 10 })
     .backgroundColor('rgba(255,255,255,0.44)')
     .borderRadius(8)
+    .onClick(action)
+  }
+
+  @Builder
+  private sidebarVipItem(action: () => void) {
+    Column({ space: 5 }) {
+      Text('✦  VIP 会员')
+        .fontSize(13)
+        .fontFamily('MiSans-DemiBold')
+        .fontWeight(FontWeight.Bold)
+        .fontColor('#F5D69D')
+        .width('100%')
+        .textAlign(TextAlign.Center)
+
+      Text('解锁满血 AI')
+        .fontSize(10)
+        .fontFamily('MiSans')
+        .fontColor('#C9AA79')
+        .width('100%')
+        .textAlign(TextAlign.Center)
+    }
+    .width('100%')
+    .height(56)
+    .padding({ left: 12, right: 12 })
+    .justifyContent(FlexAlign.Center)
+    .alignItems(HorizontalAlign.Center)
+    .linearGradient({
+      angle: 90,
+      colors: [['#2B211A', 0.0], ['#3D2B1F', 0.55], ['#211914', 1.0]]
+    })
+    .border({ width: 1, color: '#6F5133' })
+    .borderRadius(12)
     .onClick(action)
   }
 

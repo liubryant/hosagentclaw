@@ -3,6 +3,7 @@
  * @mail bryant_liu24@126.com
  */
 import { common } from '@kit.AbilityKit';
+import { fileUri } from '@kit.CoreFileKit';
 import { AgentClawDesign } from '../../common/Design';
 import { Icons } from '../../common/Icons';
 import { ShareUtil } from '../../common/ShareUtil';
@@ -16,7 +17,9 @@ export struct DocumentsListPage {
   store: ChatStore = new ChatStore();
   onClose: () => void = () => {
   };
+  onOpenVideo: (url: string, coverURL: string) => void = () => {};
   @State private previewDocument: GeneratedDocument | null = null;
+  @State private previewImage: GeneratedDocument | null = null;
 
   private getDocuments(): GeneratedDocument[] {
     return [...this.store.allDocuments].sort((a, b) => b.createdAt - a.createdAt);
@@ -37,7 +40,7 @@ export struct DocumentsListPage {
               Text(Icons.folder).fontSize(16)
               Text('文件管理').fontSize(20).fontWeight(FontWeight.Bold).fontColor('#212121')
             }
-            Text('所有对话生成的文档').fontSize(12).fontColor(AgentClawDesign.secondaryText)
+            Text('所有对话生成的文档、图片和视频').fontSize(12).fontColor(AgentClawDesign.secondaryText)
           }
           .alignItems(HorizontalAlign.Start)
 
@@ -52,7 +55,7 @@ export struct DocumentsListPage {
         if (this.getDocuments().length === 0) {
           Column({ space: 16 }) {
             Text(Icons.doc).fontSize(48)
-            Text('暂无生成的文档').fontSize(14).fontColor(Color.Gray)
+            Text('暂无保存的文件').fontSize(14).fontColor(Color.Gray)
           }
           .width('100%')
           .layoutWeight(1)
@@ -66,14 +69,18 @@ export struct DocumentsListPage {
             }
             .width('100%')
             .padding(20)
+            .alignItems(HorizontalAlign.Start)
+            .justifyContent(FlexAlign.Start)
           }
+          .width('100%')
           .layoutWeight(1)
         }
       }
       .width('92%')
-      .height('70%')
+      .height('58%')
       .backgroundColor('#FAFBFC')
       .borderRadius(14)
+      .justifyContent(FlexAlign.Start)
 
       if (this.previewDocument !== null) {
         DocumentPreviewOverlay({
@@ -84,6 +91,10 @@ export struct DocumentsListPage {
           }
         })
       }
+
+      if (this.previewImage !== null) {
+        this.imagePreviewOverlay(this.previewImage)
+      }
     }
     .width('100%')
     .height('100%')
@@ -92,7 +103,7 @@ export struct DocumentsListPage {
   @Builder
   private documentRow(document: GeneratedDocument) {
     Row({ space: 12 }) {
-      Text(Icons.doc).fontSize(20)
+      Text(this.documentIcon(document)).fontSize(20)
 
       Column({ space: 4 }) {
         Text(document.displayName)
@@ -101,7 +112,7 @@ export struct DocumentsListPage {
           .fontColor('#212121')
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
-        Text(`点击预览 · ${this.relativeTime(document.createdAt)}`)
+        Text(`${this.actionText(document)} · ${this.relativeTime(document.createdAt)}`)
           .fontSize(12)
           .fontColor(AgentClawDesign.secondaryText)
       }
@@ -125,8 +136,85 @@ export struct DocumentsListPage {
     .borderRadius(10)
     .shadow({ radius: 4, color: 'rgba(0,0,0,0.05)', offsetX: 0, offsetY: 2 })
     .onClick(() => {
-      this.previewDocument = document;
+      this.openDocument(document);
     })
+  }
+
+  @Builder
+  private imagePreviewOverlay(document: GeneratedDocument) {
+    Stack() {
+      Column() {
+        Row() {
+          Text(document.displayName)
+            .fontSize(14)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(AgentClawDesign.primaryText)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
+          Text(Icons.close)
+            .fontSize(16)
+            .onClick(() => {
+              this.previewImage = null;
+            })
+        }
+        .width('100%')
+        .height(44)
+        .padding({ left: 14, right: 14 })
+        .backgroundColor(AgentClawDesign.controlSurface)
+
+        Image(fileUri.getUriFromPath(GeneratedDocumentStore.shared.fileURL(document)))
+          .layoutWeight(1)
+          .width('100%')
+          .objectFit(ImageFit.Contain)
+          .backgroundColor('#111111')
+      }
+      .width('90%')
+      .height('80%')
+      .backgroundColor(Color.White)
+      .borderRadius(12)
+      .clip(true)
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('rgba(0,0,0,0.35)')
+  }
+
+  private openDocument(document: GeneratedDocument): void {
+    if (this.isImage(document)) {
+      this.previewImage = document;
+      return;
+    }
+    if (this.isVideo(document)) {
+      this.onOpenVideo(fileUri.getUriFromPath(GeneratedDocumentStore.shared.fileURL(document)), '');
+      return;
+    }
+    this.previewDocument = document;
+  }
+
+  private documentIcon(document: GeneratedDocument): string {
+    if (this.isImage(document)) {
+      return Icons.photo;
+    }
+    if (this.isVideo(document)) {
+      return Icons.video;
+    }
+    return Icons.doc;
+  }
+
+  private actionText(document: GeneratedDocument): string {
+    if (this.isVideo(document)) {
+      return '点击播放';
+    }
+    return '点击预览';
+  }
+
+  private isImage(document: GeneratedDocument): boolean {
+    return document.mimeType.startsWith('image/');
+  }
+
+  private isVideo(document: GeneratedDocument): boolean {
+    return document.mimeType.startsWith('video/');
   }
 
   private shareDocument(document: GeneratedDocument): void {

@@ -11,7 +11,7 @@ import {
   CSJSplashAdInteractionListener,
   CSJSplashAdCloseType
 } from '@csj/openadsdk';
-import { display } from '@kit.ArkUI';
+import { display, UIContext } from '@kit.ArkUI';
 import { AdConfig } from '../common/AdConfig';
 import { WindowStageHolder } from '../common/WindowStageHolder';
 import { GroMoreAdManager } from './GroMoreAdManager';
@@ -61,8 +61,21 @@ export class GroMoreSplashAdManager {
     }
     this.isLoading = true;
 
-    const uiContext = windowStage.getMainWindowSync().getUIContext();
-    const screen = display.getDefaultDisplaySync();
+    let uiContext: UIContext | undefined = undefined;
+    let screen: display.Display | undefined = undefined;
+    try {
+      uiContext = windowStage.getMainWindowSync().getUIContext();
+      screen = display.getDefaultDisplaySync();
+    } catch (_) {
+      this.isLoading = false;
+      completion?.(false, new Error('开屏广告窗口信息获取失败'));
+      return;
+    }
+    if (uiContext === undefined || screen === undefined) {
+      this.isLoading = false;
+      completion?.(false, new Error('开屏广告窗口信息获取失败'));
+      return;
+    }
     // HarmonyOS display.width/height are in physical pixels; GroMore SDK expects vp
     const adWidth = Math.round(screen.width / screen.densityPixels);
     const adHeight = Math.round(screen.height / screen.densityPixels);
