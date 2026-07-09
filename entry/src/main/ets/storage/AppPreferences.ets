@@ -18,6 +18,14 @@ class Key {
   static readonly isLoggedIn = 'is_logged_in';
   static readonly userPhone = 'user_phone';
   static readonly userAccessToken = 'user_access_token';
+  static readonly serverFreeVideoDaily = 'server_free_video_daily';
+  static readonly serverFreeImageDaily = 'server_free_image_daily';
+  static readonly serverVipVideoDaily = 'server_vip_video_daily';
+  static readonly serverVipImageDaily = 'server_vip_image_daily';
+  static readonly quotaVideoDate = 'quota_video_date';
+  static readonly quotaVideoCount = 'quota_video_count';
+  static readonly quotaImageDate = 'quota_image_date';
+  static readonly quotaImageCount = 'quota_image_count';
 }
 
 export class AppPreferences {
@@ -124,6 +132,78 @@ export class AppPreferences {
     } else {
       this.safeStore.putSync(Key.userAccessToken, value);
     }
+    this.safeStore.flush();
+  }
+
+  get serverFreeVideoDaily(): number {
+    return this.safeStore.getSync(Key.serverFreeVideoDaily, -1) as number;
+  }
+
+  set serverFreeVideoDaily(value: number) {
+    this.safeStore.putSync(Key.serverFreeVideoDaily, value);
+    this.safeStore.flush();
+  }
+
+  get serverFreeImageDaily(): number {
+    return this.safeStore.getSync(Key.serverFreeImageDaily, -1) as number;
+  }
+
+  set serverFreeImageDaily(value: number) {
+    this.safeStore.putSync(Key.serverFreeImageDaily, value);
+    this.safeStore.flush();
+  }
+
+  get serverVipVideoDaily(): number {
+    return this.safeStore.getSync(Key.serverVipVideoDaily, -1) as number;
+  }
+
+  set serverVipVideoDaily(value: number) {
+    this.safeStore.putSync(Key.serverVipVideoDaily, value);
+    this.safeStore.flush();
+  }
+
+  get serverVipImageDaily(): number {
+    return this.safeStore.getSync(Key.serverVipImageDaily, -1) as number;
+  }
+
+  set serverVipImageDaily(value: number) {
+    this.safeStore.putSync(Key.serverVipImageDaily, value);
+    this.safeStore.flush();
+  }
+
+  get quotaVideoDate(): string {
+    return this.safeStore.getSync(Key.quotaVideoDate, '') as string;
+  }
+
+  set quotaVideoDate(value: string) {
+    this.safeStore.putSync(Key.quotaVideoDate, value);
+    this.safeStore.flush();
+  }
+
+  get quotaVideoCount(): number {
+    return this.safeStore.getSync(Key.quotaVideoCount, 0) as number;
+  }
+
+  set quotaVideoCount(value: number) {
+    this.safeStore.putSync(Key.quotaVideoCount, value);
+    this.safeStore.flush();
+  }
+
+  get quotaImageDate(): string {
+    return this.safeStore.getSync(Key.quotaImageDate, '') as string;
+  }
+
+  set quotaImageDate(value: string) {
+    this.safeStore.putSync(Key.quotaImageDate, value);
+    this.safeStore.flush();
+  }
+
+  get quotaImageCount(): number {
+    return this.safeStore.getSync(Key.quotaImageCount, 0) as number;
+  }
+
+  set quotaImageCount(value: number) {
+    this.safeStore.putSync(Key.quotaImageCount, value);
     this.safeStore.flush();
   }
 

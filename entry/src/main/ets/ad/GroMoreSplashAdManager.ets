@@ -14,6 +14,7 @@ import {
 import { display, UIContext } from '@kit.ArkUI';
 import { AdConfig } from '../common/AdConfig';
 import { WindowStageHolder } from '../common/WindowStageHolder';
+import { SystemBarStyle } from '../common/SystemBarStyle';
 import { GroMoreAdManager } from './GroMoreAdManager';
 
 export class GroMoreSplashAdManager {
@@ -96,6 +97,7 @@ export class GroMoreSplashAdManager {
     const loadListener: CSJSplashAdLoadListener = {
       onAdLoaded: (splashAd: CSJSplashAd) => {
         splashAd.setInteractionListener(this.buildInteractionListener(finish));
+        SystemBarStyle.applyImmersiveDark();
         splashAd.showSplashAd(windowStage);
       },
       onError: (code: number, message: string) => {
@@ -122,7 +124,6 @@ export class GroMoreSplashAdManager {
       onDidShow: () => {
         this.isLoading = false;
         console.log('[GroMoreSplashAdManager] 开屏已展示');
-        finish(true);
       },
       onDidClick: () => {
         console.log('[GroMoreSplashAdManager] 开屏被点击');

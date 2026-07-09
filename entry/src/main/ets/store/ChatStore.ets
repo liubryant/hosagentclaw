@@ -14,6 +14,7 @@ import {
 import { AppPreferences } from '../storage/AppPreferences';
 import { GatewayClient } from '../gateway/GatewayClient';
 import { GeneratedDocumentStore } from './GeneratedDocumentStore';
+import { QuotaManager } from '../quota/QuotaManager';
 
 const DOCUMENT_GENERATION_INSTRUCTION = `你正在为鸿蒙客户端生成可导出的文档文件。
 当用户要求生成文档、报告、文章、Markdown、HTML、README 或文件时，必须把最终文件内容放进代码块，不要只在聊天里输出正文。
@@ -248,6 +249,11 @@ export class ChatStore {
 
     generation
       .then((reply: string) => {
+        if (entryMode === ChatEntryMode.VIDEO) {
+          QuotaManager.consumeVideo();
+        } else if (entryMode === ChatEntryMode.IMAGE || imageBase64 !== null) {
+          QuotaManager.consumeImage();
+        }
         const fallbackTitle = this.selectedSession?.title ?? 'document';
         const saveResult = GeneratedDocumentStore.shared.saveGeneratedDocuments(reply, fallbackTitle);
         const assistantMessage = new ChatMessage();

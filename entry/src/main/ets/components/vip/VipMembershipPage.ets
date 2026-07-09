@@ -8,6 +8,7 @@ import { AppPreferences } from '../../storage/AppPreferences';
 import { AlipayManager } from '../../pay/AlipayManager';
 import { PaymentApi } from '../../pay/PaymentApi';
 import { MembershipInfo, VipOrderData, VipProduct } from '../../pay/VipProduct';
+import { QuotaManager } from '../../quota/QuotaManager';
 
 const VIP_AGREEMENT_URL = 'https://www.cjym123.cn/agreement_agentclaw_vip.html';
 
@@ -483,8 +484,20 @@ export struct VipMembershipPage {
         .padding({ top: 18, bottom: 4 })
 
         Row({ space: 16 }) {
-          this.quotaCard('🎬 视频生成', '0/1', '1次/天', '5次/天')
-          this.quotaCard('🖼 图片生成', '0/10', '10张/天', '50张/天')
+          this.quotaCard(
+            '🎬 视频生成',
+            `${QuotaManager.todayVideoCount()}/${this.currentVideoLimit()}`,
+            `${QuotaManager.freeVideoLimit()}次/天`,
+            `${QuotaManager.vipVideoLimit()}次/天`,
+            this.quotaProgress(QuotaManager.todayVideoCount(), this.currentVideoLimit())
+          )
+          this.quotaCard(
+            '🖼 图片生成',
+            `${QuotaManager.todayImageCount()}/${this.currentImageLimit()}`,
+            `${QuotaManager.freeImageLimit()}张/天`,
+            `${QuotaManager.vipImageLimit()}张/天`,
+            this.quotaProgress(QuotaManager.todayImageCount(), this.currentImageLimit())
+          )
         }
         .width('100%')
         .padding({ left: 16, right: 16, top: 20 })
@@ -580,7 +593,7 @@ export struct VipMembershipPage {
   }
 
   @Builder
-  private quotaCard(title: string, usedText: string, freeLimit: string, vipLimit: string) {
+  private quotaCard(title: string, usedText: string, freeLimit: string, vipLimit: string, progress: string) {
     Column({ space: 8 }) {
       Text(title)
         .fontSize(12)
@@ -596,7 +609,7 @@ export struct VipMembershipPage {
             .borderRadius(3)
             .backgroundColor('#2D2118')
           Column()
-            .width(0)
+            .width(progress)
             .height(6)
             .borderRadius(3)
             .backgroundColor('#FEEBB9')
@@ -791,6 +804,21 @@ export struct VipMembershipPage {
   private selectedProduct(): VipProduct | null {
     const found = this.products.find((item: VipProduct): boolean => item.id === this.selectedProductId);
     return found === undefined ? null : found;
+  }
+
+  private currentVideoLimit(): number {
+    return this.memberActive ? QuotaManager.vipVideoLimit() : QuotaManager.freeVideoLimit();
+  }
+
+  private currentImageLimit(): number {
+    return this.memberActive ? QuotaManager.vipImageLimit() : QuotaManager.freeImageLimit();
+  }
+
+  private quotaProgress(used: number, limit: number): string {
+    if (limit <= 0 || used <= 0) {
+      return '0%';
+    }
+    return `${Math.min(100, Math.round((used / limit) * 100))}%`;
   }
 
   private loadProducts(): void {

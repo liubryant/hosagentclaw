@@ -163,41 +163,52 @@ export struct CreationGalleryPage {
   build() {
     Stack() {
       Column() {
-        Scroll() {
-          Column() {
-            Text('今天用AI创作什么？')
-              .fontSize(27)
-              .fontWeight(FontWeight.Bold)
-              .fontFamily('MiSans-DemiBold')
-              .fontColor('#6750F5')
-              .textAlign(TextAlign.Center)
-              .width('100%')
-              .margin({ top: 26, bottom: 0 })
-              .padding({ left: 20, right: 20 })
+        Text('今天用AI创作什么？')
+          .fontSize(27)
+          .fontWeight(FontWeight.Bold)
+          .fontFamily('MiSans-DemiBold')
+          .fontColor('#6750F5')
+          .textAlign(TextAlign.Center)
+          .width('100%')
+          .margin({ top: 26, bottom: 0 })
+          .padding({ left: 20, right: 20 })
 
-            Row() {
-              this.tabPill('图片', 0)
-              this.tabPill('视频', 1)
-            }
-            .width('100%')
-            .height(52)
-            .backgroundColor('#F0F0F5')
-            .borderRadius(14)
-            .padding(4)
-            .margin({ left: 20, right: 20, top: 18 })
-            .constraintSize({ maxWidth: '100%' })
+        Row() {
+          this.tabPill('图片', 0)
+          this.tabPill('视频', 1)
+        }
+        .width('100%')
+        .height(52)
+        .backgroundColor('#F0F0F5')
+        .borderRadius(14)
+        .padding(4)
+        .margin({ left: 20, right: 20, top: 18 })
+        .constraintSize({ maxWidth: '100%' })
 
-            if (this.activeTab === 0) {
-              this.imageTab()
-            } else {
-              this.videoTab()
-            }
+        Swiper() {
+          Scroll() {
+            this.imageTab()
           }
           .width('100%')
+          .height('100%')
+          .scrollBar(BarState.Off)
+
+          Scroll() {
+            this.videoTab()
+          }
+          .width('100%')
+          .height('100%')
+          .scrollBar(BarState.Off)
         }
+        .index(this.activeTab)
+        .loop(false)
+        .indicator(false)
+        .duration(220)
+        .onChange((index: number) => {
+          this.activeTab = index;
+        })
+        .width('100%')
         .layoutWeight(1)
-        .align(Alignment.Top)
-        .scrollBar(BarState.Off)
       }
       .width('100%')
       .height('100%')
@@ -446,6 +457,9 @@ export struct CreationGalleryPage {
       .width('100%').height('100%').alignItems(HorizontalAlign.Center)
     }
     .width('100%').height('100%')
+    .position({ x: 0, y: 0 })
+    .zIndex(1000)
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
   }
 
   @Builder
@@ -486,6 +500,9 @@ export struct CreationGalleryPage {
       .width('100%').height('100%').alignItems(HorizontalAlign.Center)
     }
     .width('100%').height('100%')
+    .position({ x: 0, y: 0 })
+    .zIndex(1000)
+    .expandSafeArea([SafeAreaType.SYSTEM], [SafeAreaEdge.TOP, SafeAreaEdge.BOTTOM])
   }
 
 }

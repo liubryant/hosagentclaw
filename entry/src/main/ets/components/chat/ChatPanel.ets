@@ -153,6 +153,7 @@ export struct ChatPanel {
   onRequireLogin: () => void = () => {};
   onImagePickerOpen: () => void = () => {};
   onClearAttachedImage: () => void = () => {};
+  onOpenImagePreview: (document: GeneratedDocument) => void = () => {};
   @State private previewDocument: GeneratedDocument | null = null;
   @State private hotspots: TodayHotspotItem[] = [];
   @State private isLoadingHotspots: boolean = false;
@@ -526,7 +527,7 @@ export struct ChatPanel {
           .width(80)
           .height(32)
           .onClick(() => {
-            this.previewDocument = document;
+            this.openGeneratedDocument(document);
           })
 
         Button('分享', { type: ButtonType.Normal })
@@ -557,6 +558,18 @@ export struct ChatPanel {
     ShareUtil.shareFile(context, path, document.mimeType).catch((error: Error) => {
       this.store.errorMessage = `分享失败：${error.message}`;
     });
+  }
+
+  private openGeneratedDocument(document: GeneratedDocument): void {
+    if (document.mimeType.startsWith('image/')) {
+      this.onOpenImagePreview(document);
+      return;
+    }
+    if (document.mimeType.startsWith('video/')) {
+      this.onOpenVideo(fileUri.getUriFromPath(GeneratedDocumentStore.shared.fileURL(document)), '');
+      return;
+    }
+    this.previewDocument = document;
   }
 
   private saveGeneratedVideoAndOpen(url: string, coverURL: string): void {
@@ -786,6 +799,8 @@ struct GeneratedImageView {
       Image(this.url)
         .constraintSize({ maxWidth: 240, maxHeight: 240 })
         .objectFit(ImageFit.Contain)
+        .borderRadius(10)
+        .clip(true)
         .onError(() => {
           this.loadFailed = true;
         })
@@ -794,9 +809,8 @@ struct GeneratedImageView {
         LoadingProgress().width(24).height(24).color(AgentClawDesign.secondaryText)
       }
     }
-    .backgroundColor(Color.White)
-    .borderRadius(8)
-    .border({ width: 1, color: AgentClawDesign.divider })
+    .borderRadius(10)
+    .clip(true)
     .onClick(() => {
       this.saveToPhotos();
     })

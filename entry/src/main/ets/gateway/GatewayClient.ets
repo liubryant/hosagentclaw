@@ -4,7 +4,7 @@
  */
 import { AppConfig, EnvironmentManager } from '../common/AppConfig';
 import { AppPreferences } from '../storage/AppPreferences';
-import { HttpClient } from '../network/HttpClient';
+import { HttpClient, HttpClientError } from '../network/HttpClient';
 import {
   ChatCompletionRequest,
   ChatCompletionRequestMessage,
@@ -17,6 +17,7 @@ import { GatewayConfig } from './GatewayConfig';
 const IMAGE_MODE_MARKER = '[[IMAGE_MODE]]';
 const VIDEO_MODE_MARKER = '[[VIDEO_MODE]]';
 const DOCUMENT_MODE_MARKER = '[[DOCUMENT_MODE]]';
+const MAX_IMAGE_EDIT_BASE64_LENGTH = 1100 * 1024;
 const VIDEO_POLL_INTERVAL_MS = 5000;
 const VIDEO_POLL_TIMEOUT_MS = 150000;
 
@@ -148,17 +149,30 @@ export class GatewayClient {
     if (imageBase64.trim().length === 0) {
       throw new Error('请选择要编辑的图片');
     }
+    if (imageBase64.length > MAX_IMAGE_EDIT_BASE64_LENGTH) {
+      throw new Error('图片过大，请选择较小的图片后再试');
+    }
 
     const body = JSON.stringify({
       prompt: cleanPrompt,
       image: `data:image/jpeg;base64,${imageBase64}`
     });
-    const bodyText = await HttpClient.postJson(
-      `${normalizeGatewayBase(this.config.baseURL)}/images/edits`,
-      this.authHeaders(),
-      body,
-      AppConfig.mediaGenerationRequestTimeoutMs
-    );
+    const url = `${normalizeGatewayBase(this.config.baseURL)}/images/edits`;
+    let bodyText: string;
+    try {
+      bodyText = await HttpClient.postJson(url, this.authHeaders(), body, AppConfig.mediaGenerationRequestTimeoutMs);
+    } catch (error) {
+      const firstError = error as Error;
+      if (!GatewayClient.shouldRetryImageEdit(firstError)) {
+        throw GatewayClient.friendlyImageEditError(firstError);
+      }
+      await GatewayClient.delay(1500);
+      try {
+        bodyText = await HttpClient.postJson(url, this.authHeaders(), body, AppConfig.mediaGenerationRequestTimeoutMs);
+      } catch (retryError) {
+        throw GatewayClient.friendlyImageEditError(retryError as Error);
+      }
+    }
     const json = GatewayClient.decodeObject(bodyText);
     const output = GatewayClient.imageOutput(json);
     if (output === null) {
@@ -244,6 +258,37 @@ export class GatewayClient {
       throw new Error('视频接口返回格式不是 JSON 对象');
     }
     return parsed as JsonObject;
+  }
+
+  private static shouldRetryImageEdit(error: Error): boolean {
+    const lower = error.message.toLowerCase();
+    if (error instanceof HttpClientError) {
+      return error.statusCode === 502 || error.statusCode === 503 || error.statusCode === 504;
+    }
+    return lower.includes('failed to receive data from the peer') ||
+      lower.includes('connection abort') ||
+      lower.includes('socket') ||
+      lower.includes('upstream_error');
+  }
+
+  private static friendlyImageEditError(error: Error): Error {
+    if (error instanceof HttpClientError) {
+      const lowerBody = error.body.toLowerCase();
+      if (error.statusCode === 502 || lowerBody.includes('upstream_error')) {
+        return new Error('图片生成接口上游失败，请稍后重试');
+      }
+      if (error.statusCode === 413 || lowerBody.includes('too large') || lowerBody.includes('payload')) {
+        return new Error('图片过大，请选择较小的图片后再试');
+      }
+    }
+
+    const lower = error.message.toLowerCase();
+    if (lower.includes('failed to receive data from the peer') ||
+      lower.includes('connection abort') ||
+      lower.includes('socket')) {
+      return new Error('图片生成连接中断，请稍后重试');
+    }
+    return error;
   }
 
   private static payload(json: JsonObject): JsonObject {

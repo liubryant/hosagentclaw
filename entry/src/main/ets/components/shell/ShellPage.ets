@@ -4,14 +4,16 @@
  */
 import { webview } from '@kit.ArkWeb';
 import { photoAccessHelper } from '@kit.MediaLibraryKit';
-import { fileIo } from '@kit.CoreFileKit';
+import { fileIo, fileUri } from '@kit.CoreFileKit';
 import { image } from '@kit.ImageKit';
 import { util } from '@kit.ArkTS';
 import { AgentClawDesign } from '../../common/Design';
 import { Icons } from '../../common/Icons';
 import { ChatStore } from '../../store/ChatStore';
+import { GeneratedDocumentStore } from '../../store/GeneratedDocumentStore';
 import { LocalChatSession } from '../../model/ChatModels';
 import { ChatEntryMode } from '../../model/ChatModels';
+import { GeneratedDocument } from '../../model/ChatModels';
 import { ChatPanel } from '../chat/ChatPanel';
 import { FancyIdeasPage } from '../ideas/FancyIdeasPage';
 import { FancyIdea } from '../ideas/FancyIdeaData';
@@ -43,6 +45,7 @@ export struct ShellPage {
   @State private webViewTitle: string = '';
   @State private fullscreenVideoURL: string = '';
   @State private fullscreenVideoCoverURL: string = '';
+  @State private fullscreenImageDocument: GeneratedDocument | null = null;
   @State private videoPlaybackError: string = '';
   @State private webviewController: webview.WebviewController = new webview.WebviewController();
   @State private isLoggedIn: boolean = false;
@@ -132,34 +135,73 @@ export struct ShellPage {
     }
 
     try {
-      const imageSource = image.createImageSource(sourceBuffer);
-      const pixelMap = await imageSource.createPixelMap();
-      try {
-        const info = await pixelMap.getImageInfo();
-        const maxDim = 1024;
-        const width = info.size.width;
-        const height = info.size.height;
-        if (width > maxDim || height > maxDim) {
-          const ratio = Math.min(maxDim / width, maxDim / height);
-          await pixelMap.scale(ratio, ratio);
-        }
+      return await this.encodedUploadImageBase64(sourceBuffer);
+    } catch (error) {
+      throw new Error('图片处理失败，请更换图片或重新选择后再试');
+    }
+  }
 
-        const packer = image.createImagePacker();
-        try {
-          const jpegBuffer = await packer.packToData(pixelMap, { format: 'image/jpeg', quality: 85 });
-          const base64Helper = new util.Base64Helper();
-          return base64Helper.encodeToStringSync(new Uint8Array(jpegBuffer));
-        } finally {
-          await packer.release();
+  private async encodedUploadImageBase64(sourceBuffer: ArrayBuffer): Promise<string> {
+    const targetBytes = 420 * 1024;
+    const maxDimensions: number[] = [1024, 896, 768, 640];
+    const qualities: number[] = [68, 58, 48, 38, 30, 24];
+
+    for (const maxDimension of maxDimensions) {
+      const jpegBuffer = await this.packUploadImage(sourceBuffer, maxDimension, qualities, targetBytes);
+      if (jpegBuffer !== null) {
+        return this.base64String(jpegBuffer);
+      }
+    }
+
+    const fallbackBuffer = await this.packUploadImage(sourceBuffer, 512, [20], Number.MAX_SAFE_INTEGER);
+    if (fallbackBuffer === null) {
+      throw new Error('图片处理失败，请更换图片或重新选择后再试');
+    }
+    return this.base64String(fallbackBuffer);
+  }
+
+  private async packUploadImage(
+    sourceBuffer: ArrayBuffer,
+    maxDimension: number,
+    qualities: number[],
+    targetBytes: number
+  ): Promise<ArrayBuffer | null> {
+    const imageSource = image.createImageSource(sourceBuffer);
+    const pixelMap = await imageSource.createPixelMap();
+    try {
+      const info = await pixelMap.getImageInfo();
+      const width = info.size.width;
+      const height = info.size.height;
+      const longestSide = Math.max(width, height);
+      if (longestSide > maxDimension && longestSide > 0) {
+        const ratio = maxDimension / longestSide;
+        await pixelMap.scale(ratio, ratio);
+      }
+
+      const packer = image.createImagePacker();
+      try {
+        for (const quality of qualities) {
+          const jpegBuffer = await packer.packToData(pixelMap, { format: 'image/jpeg', quality: quality });
+          if (jpegBuffer.byteLength <= targetBytes) {
+            console.log(`image_edit_payload_image_bytes=${jpegBuffer.byteLength}`);
+            return jpegBuffer;
+          }
         }
       } finally {
-        await pixelMap.release();
-        await imageSource.release();
+        await packer.release();
       }
-    } catch (_) {
-      const base64Helper = new util.Base64Helper();
-      return base64Helper.encodeToStringSync(new Uint8Array(sourceBuffer));
+    } finally {
+      await pixelMap.release();
+      await imageSource.release();
     }
+    return null;
+  }
+
+  private base64String(buffer: ArrayBuffer): string {
+    const base64Helper = new util.Base64Helper();
+    const base64 = base64Helper.encodeToStringSync(new Uint8Array(buffer));
+    console.log(`image_edit_payload_base64_chars=${base64.length}`);
+    return base64;
   }
 
   private maskedPhone(phone: string): string {
@@ -197,6 +239,11 @@ export struct ShellPage {
                 },
                 onFullscreenChanged: (fs: boolean) => {
                   this.isCreationFullscreen = fs;
+                  if (fs) {
+                    SystemBarStyle.applyImmersiveDark();
+                  } else {
+                    SystemBarStyle.restoreDefault();
+                  }
                 }
               })
                 .layoutWeight(1)
@@ -234,6 +281,9 @@ export struct ShellPage {
                 },
                 onClearAttachedImage: () => {
                   this.clearAttachedImage();
+                },
+                onOpenImagePreview: (document: GeneratedDocument) => {
+                  this.fullscreenImageDocument = document;
                 }
               })
                 .layoutWeight(1)
@@ -452,9 +502,52 @@ export struct ShellPage {
         .position({ x: 0, y: 0 })
         .zIndex(1000)
       }
+
+      if (this.fullscreenImageDocument !== null) {
+        this.fullscreenImagePreview(this.fullscreenImageDocument)
+      }
     }
     .width('100%')
     .height('100%')
+  }
+
+  @Builder
+  private fullscreenImagePreview(document: GeneratedDocument) {
+    Stack() {
+      Column() {
+        Row() {
+          Text(document.displayName)
+            .fontSize(14)
+            .fontWeight(FontWeight.Bold)
+            .fontColor(Color.White)
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+            .layoutWeight(1)
+
+          Text(Icons.close)
+            .fontSize(18)
+            .fontColor(Color.White)
+            .padding(12)
+            .onClick(() => {
+              this.fullscreenImageDocument = null;
+            })
+        }
+        .width('100%')
+        .height(56)
+        .padding({ left: 16, right: 8 })
+
+        Image(fileUri.getUriFromPath(GeneratedDocumentStore.shared.fileURL(document)))
+          .layoutWeight(1)
+          .width('100%')
+          .objectFit(ImageFit.Contain)
+      }
+      .width('100%')
+      .height('100%')
+    }
+    .width('100%')
+    .height('100%')
+    .backgroundColor('#EE000000')
+    .zIndex(1002)
   }
 
   @Builder

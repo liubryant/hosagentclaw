@@ -69,11 +69,14 @@ export struct DocumentsListPage {
             }
             .width('100%')
             .padding(20)
+            .constraintSize({ minHeight: '100%' })
             .alignItems(HorizontalAlign.Start)
             .justifyContent(FlexAlign.Start)
+            .align(Alignment.TopStart)
           }
           .width('100%')
           .layoutWeight(1)
+          .align(Alignment.TopStart)
         }
       }
       .width('92%')

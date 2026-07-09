@@ -39,6 +39,14 @@ export interface MembershipInfoJson {
   isMember?: boolean;
   expiresAt?: string;
   expireDate?: string;
+  quota?: VipQuotaJson;
+}
+
+export interface VipQuotaJson {
+  freeVideoDaily?: number | string;
+  freeImageDaily?: number | string;
+  vipVideoDaily?: number | string;
+  vipImageDaily?: number | string;
 }
 
 export class MembershipInfo {

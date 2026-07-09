@@ -6,10 +6,12 @@ import { http } from '@kit.NetworkKit';
 
 export class HttpClientError extends Error {
   statusCode: number;
+  body: string;
 
   constructor(statusCode: number, body: string) {
     super(body.length > 0 ? `HTTP ${statusCode}: ${body}` : `HTTP ${statusCode}`);
     this.statusCode = statusCode;
+    this.body = body;
   }
 }
 

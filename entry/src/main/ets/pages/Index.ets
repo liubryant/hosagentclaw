@@ -8,8 +8,9 @@ import { ShellPage } from '../components/shell/ShellPage';
 import { UMengAnalytics } from '../ad/UMengAnalytics';
 import { GroMoreAdManager } from '../ad/GroMoreAdManager';
 import { GroMoreSplashAdManager } from '../ad/GroMoreSplashAdManager';
+import { SystemBarStyle } from '../common/SystemBarStyle';
 
-const SPLASH_TIMEOUT_FALLBACK_MS = 5000;
+const SPLASH_TIMEOUT_FALLBACK_MS = 8000;
 
 @Entry
 @Component
@@ -65,23 +66,28 @@ struct Index {
   private requestSplashAdIfNeeded(): void {
     if (this.didRequestSplashAd || !GroMoreSplashAdManager.shared.shouldRequestSplashThisSession) {
       this.isWaitingForSplashAd = false;
+      SystemBarStyle.restoreDefault();
       return;
     }
     this.didRequestSplashAd = true;
+    SystemBarStyle.applySplash();
 
     setTimeout(() => {
       if (this.isWaitingForSplashAd) {
         this.isWaitingForSplashAd = false;
+        SystemBarStyle.restoreDefault();
       }
     }, SPLASH_TIMEOUT_FALLBACK_MS);
 
     GroMoreAdManager.shared.initialize((success: boolean) => {
       if (!success) {
         this.isWaitingForSplashAd = false;
+        SystemBarStyle.restoreDefault();
         return;
       }
       GroMoreSplashAdManager.shared.loadAndShowDefaultSplashAd(() => {
         this.isWaitingForSplashAd = false;
+        SystemBarStyle.restoreDefault();
       });
     });
   }

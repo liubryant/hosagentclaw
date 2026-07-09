@@ -5,7 +5,7 @@
 import { AppConfig } from '../common/AppConfig';
 import { AppPreferences } from '../storage/AppPreferences';
 import { HttpClient } from '../network/HttpClient';
-import { MembershipInfo, MembershipInfoJson, VipOrderData, VipProduct, VipProductJson } from './VipProduct';
+import { MembershipInfo, MembershipInfoJson, VipOrderData, VipProduct, VipProductJson, VipQuotaJson } from './VipProduct';
 
 const AGENTCLAW_ALIPAY_APP_ID = '2021006169619056';
 
@@ -67,7 +67,9 @@ export class PaymentApi {
 
   async getMembership(accessToken: string): Promise<MembershipInfo> {
     const response = await this.getJson('/membership', accessToken);
-    return MembershipInfo.from((response.data ?? {}) as MembershipInfoJson);
+    const data = (response.data ?? {}) as MembershipInfoJson;
+    this.saveQuotaConfig(data.quota);
+    return MembershipInfo.from(data);
   }
 
   async createOrder(accessToken: string, productId: string): Promise<VipOrderData> {
@@ -109,5 +111,35 @@ export class PaymentApi {
       throw new PaymentApiError(response.msg && response.msg.length > 0 ? response.msg : `请求失败：${path}`);
     }
     return response;
+  }
+
+  private saveQuotaConfig(quota: VipQuotaJson | undefined): void {
+    if (quota === undefined || quota === null) {
+      return;
+    }
+    const freeVideoDaily = this.quotaNumber(quota.freeVideoDaily);
+    const freeImageDaily = this.quotaNumber(quota.freeImageDaily);
+    const vipVideoDaily = this.quotaNumber(quota.vipVideoDaily);
+    const vipImageDaily = this.quotaNumber(quota.vipImageDaily);
+    if (freeVideoDaily !== null) {
+      AppPreferences.shared.serverFreeVideoDaily = freeVideoDaily;
+    }
+    if (freeImageDaily !== null) {
+      AppPreferences.shared.serverFreeImageDaily = freeImageDaily;
+    }
+    if (vipVideoDaily !== null) {
+      AppPreferences.shared.serverVipVideoDaily = vipVideoDaily;
+    }
+    if (vipImageDaily !== null) {
+      AppPreferences.shared.serverVipImageDaily = vipImageDaily;
+    }
+  }
+
+  private quotaNumber(value: number | string | undefined): number | null {
+    if (value === undefined) {
+      return null;
+    }
+    const numericValue = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(numericValue) ? numericValue : null;
   }
 }
