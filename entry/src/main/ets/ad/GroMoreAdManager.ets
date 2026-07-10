@@ -11,6 +11,7 @@ import {
 } from '@csj/openadsdk';
 import { AdConfig } from '../common/AdConfig';
 import { WindowStageHolder } from '../common/WindowStageHolder';
+import { AppPreferences } from '../storage/AppPreferences';
 
 export class GroMoreAdManager {
   private static instance: GroMoreAdManager | null = null;
@@ -27,6 +28,12 @@ export class GroMoreAdManager {
   }
 
   initialize(completion?: (success: boolean) => void): void {
+    if (!AppPreferences.shared.onboardingCompleted) {
+      console.warn('[GroMoreAdManager] 用户未同意隐私政策，禁止初始化广告 SDK');
+      completion?.(false);
+      return;
+    }
+
     if (this.isInitialized) {
       completion?.(true);
       return;

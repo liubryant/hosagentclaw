@@ -8,6 +8,9 @@
   "dependencies": {
     "@csj/openadsdk": "7.5.4",
     "@umeng/analytics": "1.2.12",
-    "@umeng/common": "1.1.12"
-  }
+    "@umeng/common": "1.1.12",
+    "@cashier_alipay/cashiersdk": "^15.8.43"
+  },
+  "devDependencies": {},
+  "dynamicDependencies": {}
 }

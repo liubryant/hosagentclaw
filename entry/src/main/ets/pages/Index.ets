@@ -5,9 +5,6 @@
 import { AppPreferences } from '../storage/AppPreferences';
 import { OnboardingPage } from '../components/onboarding/OnboardingPage';
 import { ShellPage } from '../components/shell/ShellPage';
-import { UMengAnalytics } from '../ad/UMengAnalytics';
-import { GroMoreAdManager } from '../ad/GroMoreAdManager';
-import { GroMoreSplashAdManager } from '../ad/GroMoreSplashAdManager';
 import { SystemBarStyle } from '../common/SystemBarStyle';
 
 const SPLASH_TIMEOUT_FALLBACK_MS = 8000;
@@ -18,10 +15,10 @@ struct Index {
   @State private onboardingCompleted: boolean = AppPreferences.shared.onboardingCompleted;
   @State private isWaitingForSplashAd: boolean = false;
   private didRequestSplashAd: boolean = false;
+  private isInitializingSdks: boolean = false;
 
   aboutToAppear(): void {
     if (this.onboardingCompleted) {
-      this.isWaitingForSplashAd = GroMoreSplashAdManager.shared.shouldRequestSplashThisSession;
       this.initializeSdksAndProceed();
     }
   }
@@ -42,7 +39,6 @@ struct Index {
         onContinue: () => {
           AppPreferences.shared.onboardingCompleted = true;
           this.onboardingCompleted = true;
-          this.isWaitingForSplashAd = GroMoreSplashAdManager.shared.shouldRequestSplashThisSession;
           this.initializeSdksAndProceed();
         }
       })
@@ -50,9 +46,33 @@ struct Index {
   }
 
   private initializeSdksAndProceed(): void {
-    // 隐私协议已同意（首次同意 or 此前已同意过），这里才允许初始化统计/广告 SDK。
-    UMengAnalytics.shared.initialize();
-    this.requestSplashAdIfNeeded();
+    if (!AppPreferences.shared.onboardingCompleted || this.isInitializingSdks) {
+      return;
+    }
+    this.isInitializingSdks = true;
+
+    // 用户同意隐私政策后才动态加载统计/广告模块，避免未同意前触发三方 SDK 的 import/初始化副作用。
+    import('../ad/UMengAnalytics').then((analyticsModule) => {
+      analyticsModule.UMengAnalytics.shared.initialize();
+    }).catch((error: Error) => {
+      console.warn(`[Index] 友盟统计模块加载失败 ${error.message}`);
+    });
+
+    import('../ad/GroMoreSplashAdManager').then((splashModule) => {
+      if (!splashModule.GroMoreSplashAdManager.shared.shouldRequestSplashThisSession) {
+        this.isWaitingForSplashAd = false;
+        SystemBarStyle.restoreDefault();
+        return;
+      }
+      this.isWaitingForSplashAd = true;
+      this.requestSplashAdIfNeeded();
+    }).catch((error: Error) => {
+      console.warn(`[Index] 广告模块加载失败 ${error.message}`);
+      this.isWaitingForSplashAd = false;
+      SystemBarStyle.restoreDefault();
+    }).finally(() => {
+      this.isInitializingSdks = false;
+    });
   }
 
   @Builder
@@ -64,7 +84,7 @@ struct Index {
   }
 
   private requestSplashAdIfNeeded(): void {
-    if (this.didRequestSplashAd || !GroMoreSplashAdManager.shared.shouldRequestSplashThisSession) {
+    if (!AppPreferences.shared.onboardingCompleted || this.didRequestSplashAd) {
       this.isWaitingForSplashAd = false;
       SystemBarStyle.restoreDefault();
       return;
@@ -79,16 +99,28 @@ struct Index {
       }
     }, SPLASH_TIMEOUT_FALLBACK_MS);
 
-    GroMoreAdManager.shared.initialize((success: boolean) => {
-      if (!success) {
-        this.isWaitingForSplashAd = false;
-        SystemBarStyle.restoreDefault();
-        return;
-      }
-      GroMoreSplashAdManager.shared.loadAndShowDefaultSplashAd(() => {
-        this.isWaitingForSplashAd = false;
-        SystemBarStyle.restoreDefault();
+    import('../ad/GroMoreAdManager').then((adModule) => {
+      adModule.GroMoreAdManager.shared.initialize((success: boolean) => {
+        if (!success) {
+          this.isWaitingForSplashAd = false;
+          SystemBarStyle.restoreDefault();
+          return;
+        }
+        import('../ad/GroMoreSplashAdManager').then((splashModule) => {
+          splashModule.GroMoreSplashAdManager.shared.loadAndShowDefaultSplashAd(() => {
+            this.isWaitingForSplashAd = false;
+            SystemBarStyle.restoreDefault();
+          });
+        }).catch((error: Error) => {
+          console.warn(`[Index] 开屏广告模块加载失败 ${error.message}`);
+          this.isWaitingForSplashAd = false;
+          SystemBarStyle.restoreDefault();
+        });
       });
+    }).catch((error: Error) => {
+      console.warn(`[Index] 广告 SDK 模块加载失败 ${error.message}`);
+      this.isWaitingForSplashAd = false;
+      SystemBarStyle.restoreDefault();
     });
   }
 }

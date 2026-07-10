@@ -6,6 +6,7 @@ import { preInit, init, agree, setLogEnabled, trackEvent } from '@umeng/analytic
 import { UMConfig } from '@umeng/common';
 import { AdConfig } from '../common/AdConfig';
 import { WindowStageHolder } from '../common/WindowStageHolder';
+import { AppPreferences } from '../storage/AppPreferences';
 
 export class UMengAnalytics {
   private static instance: UMengAnalytics | null = null;
@@ -19,6 +20,11 @@ export class UMengAnalytics {
   }
 
   initialize(): void {
+    if (!AppPreferences.shared.onboardingCompleted) {
+      console.warn('[UMengAnalytics] 用户未同意隐私政策，禁止初始化统计 SDK');
+      return;
+    }
+
     if (this.isInitialized) {
       return;
     }

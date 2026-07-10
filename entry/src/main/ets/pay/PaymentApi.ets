@@ -76,7 +76,8 @@ export class PaymentApi {
     const body = JSON.stringify({
       productId: productId,
       payChannel: 'alipay',
-      appid: AGENTCLAW_ALIPAY_APP_ID
+      appid: AGENTCLAW_ALIPAY_APP_ID,
+      platform: 'harmony'
     });
     const response = await this.postJson('/orders', body, accessToken);
     return (response.data ?? {}) as VipOrderData;

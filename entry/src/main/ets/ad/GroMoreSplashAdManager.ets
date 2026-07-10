@@ -16,6 +16,7 @@ import { AdConfig } from '../common/AdConfig';
 import { WindowStageHolder } from '../common/WindowStageHolder';
 import { SystemBarStyle } from '../common/SystemBarStyle';
 import { GroMoreAdManager } from './GroMoreAdManager';
+import { AppPreferences } from '../storage/AppPreferences';
 
 export class GroMoreSplashAdManager {
   static readonly defaultSplashSlotId: string = AdConfig.splashAdSlotId;
@@ -32,6 +33,9 @@ export class GroMoreSplashAdManager {
   }
 
   get shouldRequestSplashThisSession(): boolean {
+    if (!AppPreferences.shared.onboardingCompleted) {
+      return false;
+    }
     return !this.didRequestSplashThisSession && !this.isLoading;
   }
 
@@ -40,6 +44,11 @@ export class GroMoreSplashAdManager {
   }
 
   loadAndShowSplashAd(slotId: string, tolerateTimeoutMs: number = 3500, completion?: (shown: boolean, error?: Error) => void): void {
+    if (!AppPreferences.shared.onboardingCompleted) {
+      completion?.(false, new Error('用户未同意隐私政策，禁止请求广告'));
+      return;
+    }
+
     if (!this.shouldRequestSplashThisSession) {
       completion?.(false);
       return;
