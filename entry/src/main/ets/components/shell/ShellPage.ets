@@ -254,10 +254,14 @@ export struct ShellPage {
 
             if (this.activeTab === 'creation') {
               CreationGalleryPage({
-                onLaunchImageChat: () => {
+                onLaunchImageChat: (prompt?: string) => {
                   this.activeTab = 'chat';
                   this.isSidebarVisible = true;
-                  this.store.createSession(ChatEntryMode.IMAGE);
+                  if (prompt !== undefined && prompt.trim().length > 0) {
+                    this.store.createSessionWithDraft(prompt, ChatEntryMode.IMAGE);
+                  } else {
+                    this.store.createSession(ChatEntryMode.IMAGE);
+                  }
                 },
                 onLaunchVideoChat: () => {
                   this.activeTab = 'chat';

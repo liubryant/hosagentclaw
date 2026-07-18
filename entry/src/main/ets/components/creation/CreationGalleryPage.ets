@@ -6,6 +6,7 @@ import { AgentClawDesign } from '../../common/Design';
 import { common } from '@kit.AbilityKit';
 import { image } from '@kit.ImageKit';
 import { media } from '@kit.MediaKit';
+import { util } from '@kit.ArkTS';
 
 const IMAGE_FILES: string[] = [
   '005_realistic_photos_1_5dfc37a87a.png',
@@ -68,6 +69,11 @@ interface FeatureCard {
   isVideo: boolean;
 }
 
+interface CreationPromptItem {
+  image: string;
+  prompt_zh: string;
+}
+
 const IMAGE_FEATURE_CARDS: FeatureCard[] = [
   {
     title: '文生图',
@@ -100,7 +106,7 @@ const VIDEO_FEATURE_CARDS: FeatureCard[] = [
 
 @Component
 export struct CreationGalleryPage {
-  onLaunchImageChat: () => void = () => {};
+  onLaunchImageChat: (prompt?: string) => void = () => {};
   onLaunchVideoChat: () => void = () => {};
   onFullscreenChanged: (isFullscreen: boolean) => void = () => {};
 
@@ -108,15 +114,66 @@ export struct CreationGalleryPage {
   @State private fullscreenImage: string = '';
   @State private fullscreenVideo: string = '';
   @State private displayedImageFiles: string[] = IMAGE_FILES;
+  @State private imagePrompts: CreationPromptItem[] = [];
   @State private videoThumbnails: (image.PixelMap | undefined)[] = [];
 
   aboutToAppear(): void {
     this.displayedImageFiles = this.shuffledImageFiles();
+    this.loadCreationImages();
     this.loadVideoThumbnails();
   }
 
+  private async loadCreationImages(): Promise<void> {
+    try {
+      const context = getContext(this) as common.UIAbilityContext;
+      const content = await context.resourceManager.getRawFileContent('creation/image_prompts_zh.json');
+      const decoder = new util.TextDecoder('utf-8');
+      const jsonText = decoder.decodeWithStream(content);
+      const promptItems = JSON.parse(jsonText) as CreationPromptItem[];
+      const mergedFiles = IMAGE_FILES.slice();
+      promptItems.forEach((item: CreationPromptItem) => {
+        if (item.image.length > 0 && mergedFiles.indexOf(item.image) < 0) {
+          mergedFiles.push(item.image);
+        }
+      });
+      const availableFiles = await this.availableImageFiles(mergedFiles);
+      this.imagePrompts = promptItems;
+      this.displayedImageFiles = this.shuffleFiles(availableFiles);
+    } catch (error) {
+      console.error(`creation_prompt_load_failed=${JSON.stringify(error)}`);
+      this.imagePrompts = [];
+      this.displayedImageFiles = this.shuffledImageFiles();
+    }
+  }
+
+  private async availableImageFiles(files: string[]): Promise<string[]> {
+    const context = getContext(this) as common.UIAbilityContext;
+    const available: string[] = [];
+    for (let index = 0; index < files.length; index++) {
+      const path = 'creation/images/' + files[index];
+      try {
+        await context.resourceManager.getRawFd(path);
+        available.push(files[index]);
+      } catch (_) {
+        console.warn(`creation_image_missing=${path}`);
+      } finally {
+        await context.resourceManager.closeRawFd(path).catch(() => {});
+      }
+    }
+    return available;
+  }
+
+  private promptForImage(filename: string): string {
+    const item = this.imagePrompts.find((value: CreationPromptItem) => value.image === filename);
+    return item?.prompt_zh ?? '';
+  }
+
   private shuffledImageFiles(): string[] {
-    const files = IMAGE_FILES.slice();
+    return this.shuffleFiles(IMAGE_FILES.slice());
+  }
+
+  private shuffleFiles(source: string[]): string[] {
+    const files = source.slice();
     for (let index = files.length - 1; index > 0; index--) {
       const randomIndex = Math.floor(Math.random() * (index + 1));
       const current = files[index];
@@ -124,6 +181,17 @@ export struct CreationGalleryPage {
       files[randomIndex] = current;
     }
     return files;
+  }
+
+  private imageFilesForColumn(column: number): string[] {
+    return this.displayedImageFiles.filter((_filename: string, index: number) => index % 2 === column);
+  }
+
+  private waterfallImageHeight(column: number, index: number): number {
+    const leftHeights: number[] = [218, 172, 246, 190];
+    const rightHeights: number[] = [178, 238, 196, 256];
+    const heights = column === 0 ? leftHeights : rightHeights;
+    return heights[index % heights.length];
   }
 
   private async loadVideoThumbnails(): Promise<void> {
@@ -272,27 +340,26 @@ export struct CreationGalleryPage {
         .alignSelf(ItemAlign.Start)
         .margin({ left: 24, top: 18, bottom: 10 })
 
-      // Image grid (2 columns)
-      Grid() {
-        ForEach(this.displayedImageFiles, (filename: string) => {
-          GridItem() {
-            Image($rawfile('creation/images/' + filename))
-              .width('100%')
-              .height(160)
-              .objectFit(ImageFit.Cover)
+      // 双列独立排布，避免等高 Grid 产生的瀑布流空隙。
+      Row({ space: 8 }) {
+        ForEach([0, 1], (column: number) => {
+          Column({ space: 8 }) {
+            ForEach(this.imageFilesForColumn(column), (filename: string, index: number) => {
+              Image($rawfile('creation/images/' + filename))
+                .width('100%')
+                .height(this.waterfallImageHeight(column, index))
+                .objectFit(ImageFit.Cover)
+                .backgroundColor('#F0F0F4')
+                .borderRadius(10)
+                .border({ width: 1, color: 'rgba(0,0,0,0.06)' })
+                .clip(true)
+                .onClick(() => { this.fullscreenImage = filename; this.onFullscreenChanged(true); })
+            }, (filename: string) => filename)
           }
-          .width('100%')
-          .height(160)
-          .backgroundColor('#F0F0F4')
-          .borderRadius(10)
-          .border({ width: 1, color: 'rgba(0,0,0,0.06)' })
-          .clip(true)
-          .onClick(() => { this.fullscreenImage = filename; this.onFullscreenChanged(true); })
-        }, (filename: string) => filename)
+          .layoutWeight(1)
+          .alignSelf(ItemAlign.Start)
+        }, (column: number) => column.toString())
       }
-      .columnsTemplate('1fr 1fr')
-      .columnsGap(8)
-      .rowsGap(8)
       .padding({ left: 20, right: 20, bottom: 16 })
       .width('100%')
     }
@@ -450,7 +517,12 @@ export struct CreationGalleryPage {
           .fontColor(Color.White).textAlign(TextAlign.Center)
           .width(220).height(54).borderRadius(27)
           .linearGradient({ angle: 0, colors: [['#7658F7', 0], ['#9A51EC', 0.5], ['#D05DC4', 1]] as [string, number][] })
-          .onClick(() => { this.fullscreenImage = ''; this.onFullscreenChanged(false); this.onLaunchImageChat(); })
+          .onClick(() => {
+            const prompt = this.promptForImage(this.fullscreenImage);
+            this.fullscreenImage = '';
+            this.onFullscreenChanged(false);
+            this.onLaunchImageChat(prompt);
+          })
 
         Blank().height(32)
       }
