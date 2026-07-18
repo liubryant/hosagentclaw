@@ -1,0 +1,20 @@
+{
+  "shortcuts": [
+    {
+      "shortcutId": "quick_image",
+      "label": "$string:shortcut_quick_image",
+      "icon": "$media:shortcut_quick_image",
+      "visible": true,
+      "wants": [
+        {
+          "bundleName": "cn.cjym.agentclaw",
+          "moduleName": "entry",
+          "abilityName": "EntryAbility",
+          "parameters": {
+            "shortcutAction": "quick_image"
+          }
+        }
+      ]
+    }
+  ]
+}

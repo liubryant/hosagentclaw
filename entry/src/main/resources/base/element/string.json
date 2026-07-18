@@ -9,6 +9,10 @@
       "value": "Agent智能体生活助手主入口"
     },
     {
+      "name": "shortcut_quick_image",
+      "value": "一键生图"
+    },
+    {
       "name": "reason_write_imagevideo",
       "value": "用于将AI生成的图片保存到您的相册"
     },

@@ -25,12 +25,21 @@ import { ProfilePage } from '../profile/ProfilePage';
 import { VipMembershipPage } from '../vip/VipMembershipPage';
 import { AppPreferences } from '../../storage/AppPreferences';
 import { SystemBarStyle } from '../../common/SystemBarStyle';
+import { WindowStageHolder } from '../../common/WindowStageHolder';
+import {
+  SHORTCUT_ACTION_QUICK_IMAGE,
+  SHORTCUT_LAUNCH_EVENT,
+  ShortcutLaunchStore
+} from '../../common/ShortcutLaunchStore';
 
 type BottomTab = 'chat' | 'creation' | 'profile';
 
 @Component
 export struct ShellPage {
   private store: ChatStore = new ChatStore();
+  private readonly shortcutLaunchListener = (action: string): void => {
+    this.handleShortcutLaunch(action);
+  };
   @State private activeTab: BottomTab = 'creation';
   @State private isSidebarVisible: boolean = true;
   @State private isImagePickerSheetVisible: boolean = false;
@@ -54,6 +63,24 @@ export struct ShellPage {
   aboutToAppear(): void {
     SystemBarStyle.restoreDefault();
     this.refreshLoginState();
+    WindowStageHolder.abilityContext?.eventHub.on(SHORTCUT_LAUNCH_EVENT, this.shortcutLaunchListener);
+    this.handleShortcutLaunch(ShortcutLaunchStore.consume());
+  }
+
+  aboutToDisappear(): void {
+    WindowStageHolder.abilityContext?.eventHub.off(SHORTCUT_LAUNCH_EVENT, this.shortcutLaunchListener);
+  }
+
+  private handleShortcutLaunch(action: string): void {
+    if (action !== SHORTCUT_ACTION_QUICK_IMAGE) {
+      return;
+    }
+    ShortcutLaunchStore.consume();
+    this.activeTab = 'chat';
+    this.isSidebarVisible = true;
+    this.isCreationFullscreen = false;
+    this.clearAttachedImage();
+    this.store.createSession(ChatEntryMode.IMAGE);
   }
 
   private refreshLoginState(): void {
@@ -289,17 +316,18 @@ export struct ShellPage {
                 .layoutWeight(1)
             }
 
-            if (!this.isCreationFullscreen) {
-              this.bottomTabBar()
-            }
           }
           .layoutWeight(1)
           .backgroundColor(Color.White)
-          .borderRadius(this.isSidebarVisible ? 20 : 0)
+          .borderRadius(this.isSidebarVisible && this.activeTab === 'chat' ? 20 : 0)
           .clip(true)
         }
         .layoutWeight(1)
         .width('100%')
+
+        if (!this.isCreationFullscreen) {
+          this.bottomTabBar()
+        }
       }
       .width('100%')
       .height('100%')
@@ -554,9 +582,7 @@ export struct ShellPage {
   private bottomTabBar() {
     Row() {
       this.tabItem('creation')
-      if (this.activeTab !== 'chat') {
-        this.tabItem('chat')
-      }
+      this.tabItem('chat')
       this.tabItem('profile')
     }
     .width('100%')
@@ -929,9 +955,11 @@ export struct ShellPage {
   @Builder
   private chatHeader() {
     Row() {
-      this.headerIconButton($rawfile('icons/ic_header_sidebar.svg'), 20, () => {
-        this.isSidebarVisible = !this.isSidebarVisible;
-      })
+      if (this.activeTab === 'chat') {
+        this.headerIconButton($rawfile('icons/ic_header_sidebar.svg'), 20, () => {
+          this.isSidebarVisible = !this.isSidebarVisible;
+        })
+      }
 
       this.headerIconButton($rawfile('icons/ic_header_new_chat.svg'), 18, () => {
         this.guardedCreateSession(() => { this.store.createSession(); });

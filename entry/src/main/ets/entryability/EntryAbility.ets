@@ -9,6 +9,7 @@ import { AppPreferences } from '../storage/AppPreferences';
 import { EnvironmentManager } from '../common/AppConfig';
 import { GeneratedDocumentStore } from '../store/GeneratedDocumentStore';
 import { WindowStageHolder } from '../common/WindowStageHolder';
+import { SHORTCUT_LAUNCH_EVENT, ShortcutLaunchStore } from '../common/ShortcutLaunchStore';
 
 const DOMAIN = 0x0000;
 
@@ -19,6 +20,14 @@ export default class EntryAbility extends UIAbility {
     EnvironmentManager.shared.init(this.context);
     GeneratedDocumentStore.shared.init(this.context);
     WindowStageHolder.abilityContext = this.context;
+    ShortcutLaunchStore.capture(want);
+  }
+
+  onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
+    const action = ShortcutLaunchStore.capture(want);
+    if (action.length > 0) {
+      this.context.eventHub.emit(SHORTCUT_LAUNCH_EVENT, action);
+    }
   }
 
   onDestroy(): void {
