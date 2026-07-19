@@ -5,13 +5,13 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
-          "certpath": "/Users/liuzheng/.ohos/config/default_hosagentclaw_Kp_gxpJ7J3QME7WMCMBkPcpaoukoemSSsBtow13h0gc=.cer",
-          "keyAlias": "debugKey",
-          "keyPassword": "0000001B7B67C5ED6FC48B5276BD81B36626A8C6B267361C7B0E36CEBB7CDB1484F0D3C46990A803332F13",
-          "profile": "/Users/liuzheng/.ohos/config/default_hosagentclaw_Kp_gxpJ7J3QME7WMCMBkPcpaoukoemSSsBtow13h0gc=.p7b",
+          "storeFile": "/Users/liuzheng/Desktop/hoscsr/agentclaw.p12",
+          "storePassword": "000000182C10371E6D6C237462B3C1864FD5D43E3D2A258FB4E044CFBF68718378FE56CB972FDE8C",
+          "keyAlias": "agentclaw",
+          "keyPassword": "000000187551A3EA24FD5D7C92FE18CB8279B89649DEF88E6E00CDEC7392D93ABA5B165CD0053C50",
           "signAlg": "SHA256withECDSA",
-          "storeFile": "/Users/liuzheng/.ohos/config/default_hosagentclaw_Kp_gxpJ7J3QME7WMCMBkPcpaoukoemSSsBtow13h0gc=.p12",
-          "storePassword": "0000001B522CF1E5A7AF3869DAC5E3AD83C05A7DF8002BF5FF6EEEF0A9FC02E52E736B306BADC9C66CF02A"
+          "profile": "/Users/liuzheng/Desktop/hoscsr/agentclawRelease.p7b",
+          "certpath": "/Users/liuzheng/Desktop/hoscsr/liuzheng.cer"
         }
       }
     ],

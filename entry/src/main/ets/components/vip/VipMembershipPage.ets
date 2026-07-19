@@ -764,7 +764,7 @@ export struct VipMembershipPage {
             this.isAgreementChecked = !this.isAgreementChecked;
           })
 
-        Text('点击开通按钮即代表同意')
+        Text('我已阅读并同意')
           .fontSize(12)
           .fontColor('#999999')
 
