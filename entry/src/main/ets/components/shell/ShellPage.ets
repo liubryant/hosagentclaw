@@ -23,16 +23,18 @@ import { LoginDialog } from '../account/LoginDialog';
 import { CreationGalleryPage } from '../creation/CreationGalleryPage';
 import { ProfilePage } from '../profile/ProfilePage';
 import { VipMembershipPage } from '../vip/VipMembershipPage';
+import { AvatarPage } from '../avatar/AvatarPage';
 import { AppPreferences } from '../../storage/AppPreferences';
 import { SystemBarStyle } from '../../common/SystemBarStyle';
 import { WindowStageHolder } from '../../common/WindowStageHolder';
 import {
   SHORTCUT_ACTION_QUICK_IMAGE,
+  SHORTCUT_ACTION_AVATAR,
   SHORTCUT_LAUNCH_EVENT,
   ShortcutLaunchStore
 } from '../../common/ShortcutLaunchStore';
 
-type BottomTab = 'chat' | 'creation' | 'profile';
+type BottomTab = 'chat' | 'creation' | 'avatar' | 'profile';
 
 @Component
 export struct ShellPage {
@@ -72,6 +74,14 @@ export struct ShellPage {
   }
 
   private handleShortcutLaunch(action: string): void {
+    if (action === SHORTCUT_ACTION_AVATAR) {
+      ShortcutLaunchStore.consume();
+      this.activeTab = 'avatar';
+      SystemBarStyle.applyAvatarImmersive();
+      this.isSidebarVisible = false;
+      this.isCreationFullscreen = false;
+      return;
+    }
     if (action !== SHORTCUT_ACTION_QUICK_IMAGE) {
       return;
     }
@@ -247,13 +257,14 @@ export struct ShellPage {
           }
 
           Column() {
-            if (!this.isCreationFullscreen) {
+            if (!this.isCreationFullscreen && this.activeTab !== 'avatar') {
               this.chatHeader()
               Divider().color(AgentClawDesign.divider).strokeWidth(0.5)
             }
 
-            if (this.activeTab === 'creation') {
-              CreationGalleryPage({
+            Stack() {
+              if (this.activeTab === 'creation') {
+                CreationGalleryPage({
                 onLaunchImageChat: (prompt?: string) => {
                   this.activeTab = 'chat';
                   this.isSidebarVisible = true;
@@ -276,10 +287,11 @@ export struct ShellPage {
                     SystemBarStyle.restoreDefault();
                   }
                 }
-              })
-                .layoutWeight(1)
-            } else if (this.activeTab === 'profile') {
-              ProfilePage({
+                })
+                  .width('100%')
+                  .height('100%')
+              } else if (this.activeTab === 'profile') {
+                ProfilePage({
                 onOpenSettings: () => {
                   this.isSettingsPresented = true;
                 },
@@ -293,10 +305,11 @@ export struct ShellPage {
                 onOpenVip: () => {
                   this.openVipPage();
                 }
-              })
-                .layoutWeight(1)
-            } else {
-              ChatPanel({
+                })
+                  .width('100%')
+                  .height('100%')
+              } else if (this.activeTab === 'chat') {
+                ChatPanel({
                 store: this.store,
                 onOpenVideo: (url: string, coverURL: string) => {
                   this.openFullscreenVideo(url, coverURL);
@@ -316,9 +329,30 @@ export struct ShellPage {
                 onOpenImagePreview: (document: GeneratedDocument) => {
                   this.fullscreenImageDocument = document;
                 }
-              })
-                .layoutWeight(1)
+                })
+                  .width('100%')
+                  .height('100%')
+              } else if (this.activeTab === 'avatar') {
+                // XComponent owns a native surface. It must only exist while
+                // the avatar tab is active; Visibility.Hidden cannot reliably
+                // prevent that surface from drawing over sibling ArkUI pages.
+                AvatarPage({
+                  onRequireLogin: () => {
+                    this.refreshLoginState();
+                    if (!this.isLoggedIn) {
+                      this.isLoginPresented = true;
+                    }
+                  },
+                  onRequireVip: () => {
+                    this.openVipPage();
+                  }
+                })
+                  .width('100%')
+                  .height('100%')
+              }
             }
+            .layoutWeight(1)
+            .width('100%')
 
           }
           .layoutWeight(1)
@@ -331,6 +365,16 @@ export struct ShellPage {
 
         if (!this.isCreationFullscreen) {
           this.bottomTabBar()
+          // Tuanjie XComponent removes the system gesture inset from ArkUI's
+          // available area after its surface becomes active. Restore only the
+          // missing inset for the avatar tab so the shared tab bar keeps the
+          // exact same vertical position as the other tabs.
+          if (this.activeTab === 'avatar') {
+            Blank()
+              .width('100%')
+              .height(28)
+              .backgroundColor(Color.White)
+          }
         }
       }
       .width('100%')
@@ -587,6 +631,7 @@ export struct ShellPage {
     Row() {
       this.tabItem('creation')
       this.tabItem('chat')
+      this.tabItem('avatar')
       this.tabItem('profile')
     }
     .width('100%')
@@ -594,18 +639,38 @@ export struct ShellPage {
     .backgroundColor('#FCFFFFFF')
     .border({ width: { top: 0.5 }, color: AgentClawDesign.divider })
     .padding({ left: 12, top: 7, right: 12, bottom: 7 })
+    .onAreaChange((_oldValue: Area, newValue: Area) => {
+      console.info(`tuanjiehub bottom_tab_area tab=${this.activeTab} width=${newValue.width} height=${newValue.height} x=${newValue.position.x} y=${newValue.position.y}`);
+    })
   }
 
   @Builder
   private tabItem(tab: BottomTab) {
     Column({ space: 3 }) {
-      Image(tab === 'creation' ? $rawfile('icons/ic_bottom_creation.svg') :
-            tab === 'chat' ? $rawfile('icons/ic_bottom_conversation.svg') :
-            $rawfile('icons/ic_bottom_profile.svg'))
-        .width(22)
-        .height(22)
-        .fillColor(this.activeTab === tab ? Color.White : '#7B8190')
-      Text(tab === 'creation' ? '画图' : tab === 'chat' ? '对话' : '我的')
+      if (tab === 'avatar') {
+        Stack({ alignContent: Alignment.Center }) {
+          Stack({ alignContent: Alignment.Center }) {
+            Image($rawfile('icons/lily_tab_thumbnail.png'))
+              .width(29)
+              .height(29)
+              .objectFit(ImageFit.Cover)
+          }
+          .width(29)
+          .height(29)
+          .borderRadius(15)
+          .clip(true)
+        }
+        .width(31)
+        .height(31)
+      } else {
+        Image(tab === 'creation' ? $rawfile('icons/ic_bottom_creation.svg') :
+              tab === 'chat' ? $rawfile('icons/ic_bottom_conversation.svg') :
+              $rawfile('icons/ic_bottom_profile.svg'))
+          .width(22)
+          .height(22)
+          .fillColor(this.activeTab === tab ? Color.White : '#7B8190')
+      }
+      Text(tab === 'creation' ? '画图' : tab === 'chat' ? '对话' : tab === 'avatar' ? '智能体' : '我的')
         .fontSize(11)
         .fontFamily('MiSans-DemiBold')
         .fontColor(this.activeTab === tab ? Color.White : '#7B8190')
@@ -618,10 +683,14 @@ export struct ShellPage {
       angle: 0,
       colors: [['#7557F6', 0], ['#A451EE', 1]] as [string, number][]
     } : { angle: 0, colors: [['rgba(0,0,0,0)', 0], ['rgba(0,0,0,0)', 1]] as [string, number][] })
-    .scale({ x: this.activeTab === tab ? 1.0 : 0.94, y: this.activeTab === tab ? 1.0 : 0.94 })
-    .animation({ duration: 180, curve: Curve.EaseInOut })
     .onClick(() => {
+      console.info(`tuanjiehub tab_select from=${this.activeTab} to=${tab}`);
       this.activeTab = tab;
+      if (tab === 'avatar') {
+        SystemBarStyle.applyAvatarImmersive();
+      } else {
+        SystemBarStyle.restoreDefault();
+      }
       if (tab === 'chat') {
         this.isSidebarVisible = true;
       }

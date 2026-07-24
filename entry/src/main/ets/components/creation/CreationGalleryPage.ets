@@ -104,23 +104,65 @@ const VIDEO_FEATURE_CARDS: FeatureCard[] = [
   }
 ];
 
+// Module state lives for the whole application process. The gallery is rebuilt
+// by the conditional tab UI, so keep its cold-start order/data outside the
+// component to avoid reloading and reshuffling on every tab switch.
+function coldStartShuffle(source: string[]): string[] {
+  const files = source.slice();
+  for (let index = files.length - 1; index > 0; index--) {
+    const randomIndex = Math.floor(Math.random() * (index + 1));
+    const current = files[index];
+    files[index] = files[randomIndex];
+    files[randomIndex] = current;
+  }
+  return files;
+}
+
+let galleryImageFiles: string[] = coldStartShuffle(IMAGE_FILES);
+let galleryImagePrompts: CreationPromptItem[] = [];
+let galleryVideoThumbnails: (image.PixelMap | undefined)[] = [];
+let galleryImagesLoaded: boolean = false;
+let galleryImagesLoading: boolean = false;
+let galleryVideosLoaded: boolean = false;
+let galleryVideosLoading: boolean = false;
+let galleryActiveTab: number = 0;
+let galleryImageScrollY: number = 0;
+let galleryVideoScrollY: number = 0;
+const galleryImageScroller: Scroller = new Scroller();
+const galleryVideoScroller: Scroller = new Scroller();
+
 @Component
 export struct CreationGalleryPage {
   onLaunchImageChat: (prompt?: string) => void = () => {};
   onLaunchVideoChat: () => void = () => {};
   onFullscreenChanged: (isFullscreen: boolean) => void = () => {};
 
-  @State private activeTab: number = 0;
+  @State private activeTab: number = galleryActiveTab;
   @State private fullscreenImage: string = '';
   @State private fullscreenVideo: string = '';
-  @State private displayedImageFiles: string[] = IMAGE_FILES;
-  @State private imagePrompts: CreationPromptItem[] = [];
-  @State private videoThumbnails: (image.PixelMap | undefined)[] = [];
+  @State private displayedImageFiles: string[] = galleryImageFiles;
+  @State private imagePrompts: CreationPromptItem[] = galleryImagePrompts;
+  @State private videoThumbnails: (image.PixelMap | undefined)[] = galleryVideoThumbnails;
 
   aboutToAppear(): void {
-    this.displayedImageFiles = this.shuffledImageFiles();
-    this.loadCreationImages();
-    this.loadVideoThumbnails();
+    this.activeTab = galleryActiveTab;
+    this.displayedImageFiles = galleryImageFiles;
+    this.imagePrompts = galleryImagePrompts;
+    this.videoThumbnails = galleryVideoThumbnails;
+    if (!galleryImagesLoaded && !galleryImagesLoading) {
+      galleryImagesLoading = true;
+      this.loadCreationImages();
+    }
+    if (!galleryVideosLoaded && !galleryVideosLoading) {
+      galleryVideosLoading = true;
+      this.loadVideoThumbnails();
+    }
+    // ShellPage conditionally mounts tab content. Restore the process-level
+    // scroll positions after this Scroll has attached to its controller.
+    setTimeout((): void => {
+      galleryImageScroller.scrollTo({ xOffset: 0, yOffset: galleryImageScrollY, animation: { duration: 0 } });
+      galleryVideoScroller.scrollTo({ xOffset: 0, yOffset: galleryVideoScrollY, animation: { duration: 0 } });
+    }, 80);
   }
 
   private async loadCreationImages(): Promise<void> {
@@ -139,10 +181,16 @@ export struct CreationGalleryPage {
       const availableFiles = await this.availableImageFiles(mergedFiles);
       this.imagePrompts = promptItems;
       this.displayedImageFiles = this.shuffleFiles(availableFiles);
+      galleryImagePrompts = this.imagePrompts;
+      galleryImageFiles = this.displayedImageFiles;
     } catch (error) {
       console.error(`creation_prompt_load_failed=${JSON.stringify(error)}`);
       this.imagePrompts = [];
-      this.displayedImageFiles = this.shuffledImageFiles();
+      this.displayedImageFiles = galleryImageFiles;
+      galleryImagePrompts = [];
+    } finally {
+      galleryImagesLoaded = true;
+      galleryImagesLoading = false;
     }
   }
 
@@ -217,6 +265,7 @@ export struct CreationGalleryPage {
         const updated = this.videoThumbnails.slice();
         updated[index] = thumbnail;
         this.videoThumbnails = updated;
+        galleryVideoThumbnails = updated;
       } catch (_) {
       } finally {
         await generator.release().catch(() => {});
@@ -226,6 +275,8 @@ export struct CreationGalleryPage {
         }
       }
     }
+    galleryVideosLoaded = true;
+    galleryVideosLoading = false;
   }
 
   build() {
@@ -254,19 +305,25 @@ export struct CreationGalleryPage {
         .constraintSize({ maxWidth: '100%' })
 
         Swiper() {
-          Scroll() {
+          Scroll(galleryImageScroller) {
             this.imageTab()
           }
           .width('100%')
           .height('100%')
           .scrollBar(BarState.Off)
+          .onScroll(() => {
+            galleryImageScrollY = galleryImageScroller.currentOffset().yOffset;
+          })
 
-          Scroll() {
+          Scroll(galleryVideoScroller) {
             this.videoTab()
           }
           .width('100%')
           .height('100%')
           .scrollBar(BarState.Off)
+          .onScroll(() => {
+            galleryVideoScrollY = galleryVideoScroller.currentOffset().yOffset;
+          })
         }
         .index(this.activeTab)
         .loop(false)
@@ -274,6 +331,7 @@ export struct CreationGalleryPage {
         .duration(220)
         .onChange((index: number) => {
           this.activeTab = index;
+          galleryActiveTab = index;
         })
         .width('100%')
         .layoutWeight(1)
@@ -316,6 +374,7 @@ export struct CreationGalleryPage {
     } : { radius: 0, color: Color.Transparent, offsetX: 0, offsetY: 0 })
     .onClick(() => {
       this.activeTab = index;
+      galleryActiveTab = index;
     })
   }
 

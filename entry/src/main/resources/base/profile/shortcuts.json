@@ -15,6 +15,22 @@
           }
         }
       ]
+    },
+    {
+      "shortcutId": "avatar",
+      "label": "$string:shortcut_avatar",
+      "icon": "$media:shortcut_avatar",
+      "visible": true,
+      "wants": [
+        {
+          "bundleName": "cn.cjym.agentclaw",
+          "moduleName": "entry",
+          "abilityName": "EntryAbility",
+          "parameters": {
+            "shortcutAction": "avatar"
+          }
+        }
+      ]
     }
   ]
 }

@@ -5,6 +5,19 @@
         "name": "default",
         "type": "HarmonyOS",
         "material": {
+          "certpath": "/Users/liuzheng/.ohos/config/default_hosagentclaw_Kp_gxpJ7J3QME7WMCMBkPcpaoukoemSSsBtow13h0gc=.cer",
+          "keyAlias": "debugKey",
+          "keyPassword": "0000001B8B8B46D9D648CBBE8A4B407D95189C0A7FBF9B588D7639FEA17C24EBFDE3010B8EF1F45CADC422",
+          "profile": "/Users/liuzheng/.ohos/config/default_hosagentclaw_Kp_gxpJ7J3QME7WMCMBkPcpaoukoemSSsBtow13h0gc=.p7b",
+          "signAlg": "SHA256withECDSA",
+          "storeFile": "/Users/liuzheng/.ohos/config/default_hosagentclaw_Kp_gxpJ7J3QME7WMCMBkPcpaoukoemSSsBtow13h0gc=.p12",
+          "storePassword": "0000001B39B27AECE8A45E32DC6C8EE2325E4872621C8B7D5C357217E5AA7E980DE0A397B864443C736044"
+        }
+      },
+      {
+        "name": "release",
+        "type": "HarmonyOS",
+        "material": {
           "storeFile": "/Users/liuzheng/Desktop/hoscsr/agentclaw.p12",
           "storePassword": "000000182C10371E6D6C237462B3C1864FD5D43E3D2A258FB4E044CFBF68718378FE56CB972FDE8C",
           "keyAlias": "agentclaw",
@@ -19,6 +32,19 @@
       {
         "name": "default",
         "signingConfig": "default",
+        "targetSdkVersion": "6.1.1(24)",
+        "compatibleSdkVersion": "5.0.1(13)",
+        "runtimeOS": "HarmonyOS",
+        "buildOption": {
+          "strictMode": {
+            "caseSensitiveCheck": true,
+            "useNormalizedOHMUrl": true
+          }
+        }
+      },
+      {
+        "name": "release",
+        "signingConfig": "release",
         "targetSdkVersion": "6.1.1(24)",
         "compatibleSdkVersion": "5.0.1(13)",
         "runtimeOS": "HarmonyOS",
@@ -47,7 +73,21 @@
         {
           "name": "default",
           "applyToProducts": [
-            "default"
+            "default",
+            "release"
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tuanjieLib",
+      "srcPath": "./tuanjieLib",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default",
+            "release"
           ]
         }
       ]

@@ -1,6 +1,10 @@
 {
   "string": [
     {
+      "name": "microphone_reason",
+      "value": "用于将您的语音识别为对话文字"
+    },
+    {
       "name": "module_desc",
       "value": "Agent智能体生活助手"
     },
@@ -11,6 +15,10 @@
     {
       "name": "shortcut_quick_image",
       "value": "一键生图"
+    },
+    {
+      "name": "shortcut_avatar",
+      "value": "对话AI数字人"
     },
     {
       "name": "reason_write_imagevideo",

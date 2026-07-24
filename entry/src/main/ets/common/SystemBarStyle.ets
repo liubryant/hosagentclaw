@@ -29,6 +29,32 @@ export class SystemBarStyle {
     SystemBarStyle.applyImmersiveDark();
   }
 
+  /**
+   * Avatar page: hide only the top status bar while keeping the bottom
+   * navigation/gesture area identical to the normal tab pages.
+   */
+  static applyAvatarImmersive(): void {
+    const mainWindow = SystemBarStyle.mainWindow();
+    if (!mainWindow) {
+      return;
+    }
+
+    // Avatar keeps its original top immersive presentation: hide the status
+    // bar while retaining the system navigation bar. ShellPage independently
+    // restores the bottom gesture inset consumed by the Tuanjie surface.
+    mainWindow.setWindowLayoutFullScreen(false).catch(() => {});
+    mainWindow.setWindowSystemBarEnable(['navigation']).catch(() => {});
+    mainWindow.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.RESIZE);
+    mainWindow.setWindowSystemBarProperties({
+      statusBarColor: '#00000000',
+      statusBarContentColor: '#FFFFFF',
+      isStatusBarLightIcon: true,
+      navigationBarColor: '#FFFFFF',
+      navigationBarContentColor: '#1A1A2E',
+      isNavigationBarLightIcon: false
+    }).catch(() => {});
+  }
+
   static applyVip(): void {
     const mainWindow = SystemBarStyle.mainWindow();
     if (!mainWindow) {

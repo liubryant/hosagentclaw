@@ -3,6 +3,7 @@
  * @mail bryant_liu24@126.com
  */
 import { AgentClawDesign } from '../../common/Design';
+import { bundleManager } from '@kit.AbilityKit';
 import { AppPreferences } from '../../storage/AppPreferences';
 import { LoginDialog } from '../account/LoginDialog';
 import { AuthService } from '../../gateway/AuthService';
@@ -10,7 +11,6 @@ import { AuthService } from '../../gateway/AuthService';
 const AGREEMENT_URL = 'https://www.cjym123.cn/agreement_agentclaw.html';
 const PRIVACY_URL = 'https://www.cjym123.cn/privacy_agentclaw.html';
 const FEEDBACK_URL = 'https://www.cjym123.cn/feedback_agentclaw.html';
-const APP_VERSION = '1.0.0';
 const CODE_COUNTDOWN_SECONDS = 120;
 
 function isValidLoginCode(code: string): boolean {
@@ -34,10 +34,12 @@ export struct ProfilePage {
   @State private isDeletingAccount: boolean = false;
   @State private deleteCodeButtonText: string = '获取验证码';
   @State private isDeleteCodeButtonEnabled: boolean = true;
+  @State private currentVersionName: string = '--';
   private deleteCodeCountdownTimer: number = -1;
 
   aboutToAppear(): void {
     this.refreshLoginState();
+    this.loadCurrentVersionName();
   }
 
   aboutToDisappear(): void {
@@ -47,6 +49,19 @@ export struct ProfilePage {
   private refreshLoginState(): void {
     this.isLoggedIn = AppPreferences.shared.isLoggedIn;
     this.userPhone = AppPreferences.shared.userPhone ?? '';
+  }
+
+  private loadCurrentVersionName(): void {
+    try {
+      const bundleInfo = bundleManager.getBundleInfoForSelfSync(
+        bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT
+      );
+      if (bundleInfo.versionName.length > 0) {
+        this.currentVersionName = bundleInfo.versionName;
+      }
+    } catch (_error) {
+      this.currentVersionName = '--';
+    }
   }
 
   build() {
@@ -136,7 +151,7 @@ export struct ProfilePage {
           }
 
           // Version text
-          Text(`版本 ${APP_VERSION}`)
+          Text(`版本 ${this.currentVersionName}`)
             .fontSize(11)
             .fontFamily('MiSans-Normal')
             .fontColor('#A0A0AA')
@@ -147,7 +162,7 @@ export struct ProfilePage {
           Text('注销账号')
             .fontSize(12)
             .fontFamily('MiSans')
-            .fontColor(this.isLoggedIn ? '#E5484D' : '#A0A0AA')
+            .fontColor('#E5484D')
             .textAlign(TextAlign.Center)
             .width('100%')
             .height(36)

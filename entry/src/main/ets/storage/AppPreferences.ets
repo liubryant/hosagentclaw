@@ -26,6 +26,9 @@ class Key {
   static readonly quotaVideoCount = 'quota_video_count';
   static readonly quotaImageDate = 'quota_image_date';
   static readonly quotaImageCount = 'quota_image_count';
+  static readonly avatarConversation = 'avatar_conversation';
+  static readonly freeAgentQuestionCount = 'free_agent_question_count';
+  static readonly vipActive = 'vip_active';
 }
 
 export class AppPreferences {
@@ -204,6 +207,33 @@ export class AppPreferences {
 
   set quotaImageCount(value: number) {
     this.safeStore.putSync(Key.quotaImageCount, value);
+    this.safeStore.flush();
+  }
+
+  get avatarConversation(): string {
+    return this.safeStore.getSync(Key.avatarConversation, '') as string;
+  }
+
+  set avatarConversation(value: string) {
+    this.safeStore.putSync(Key.avatarConversation, value);
+    this.safeStore.flush();
+  }
+
+  get freeAgentQuestionCount(): number {
+    return this.safeStore.getSync(Key.freeAgentQuestionCount, 0) as number;
+  }
+
+  set freeAgentQuestionCount(value: number) {
+    this.safeStore.putSync(Key.freeAgentQuestionCount, Math.max(0, value));
+    this.safeStore.flush();
+  }
+
+  get vipActive(): boolean {
+    return this.safeStore.getSync(Key.vipActive, false) as boolean;
+  }
+
+  set vipActive(value: boolean) {
+    this.safeStore.putSync(Key.vipActive, value);
     this.safeStore.flush();
   }
 

@@ -3,6 +3,7 @@
  * @mail bryant_liu24@126.com
  */
 import { AgentClawDesign } from '../../common/Design';
+import { bundleManager } from '@kit.AbilityKit';
 import { AppEnvironment, EnvironmentManager, environmentDisplayName } from '../../common/AppConfig';
 import { AppPreferences } from '../../storage/AppPreferences';
 import { GatewayClient } from '../../gateway/GatewayClient';
@@ -36,11 +37,16 @@ export struct SettingsPanel {
   @State private showEnvironmentOption: boolean = false;
   @State private currentEnvironment: AppEnvironment = AppEnvironment.PRODUCTION;
   @State private isWideLayout: boolean = false;
+  @State private currentVersionName: string = '--';
+  @State private skills: SkillItem[] = SKILLS.map((skill: SkillItem): SkillItem => {
+    return { name: skill.name, detail: skill.detail, enabled: skill.enabled };
+  });
   private tapCount: number = 0;
   private lastTapTime: number = Date.now();
 
   aboutToAppear(): void {
     this.currentEnvironment = EnvironmentManager.shared.currentEnvironment;
+    this.loadCurrentVersionName();
   }
 
   build() {
@@ -240,10 +246,19 @@ export struct SettingsPanel {
 
   private skillRows(): SkillItem[][] {
     const rows: SkillItem[][] = [];
-    for (let index = 0; index < SKILLS.length; index += 2) {
-      rows.push(SKILLS.slice(index, Math.min(index + 2, SKILLS.length)));
+    for (let index = 0; index < this.skills.length; index += 2) {
+      rows.push(this.skills.slice(index, Math.min(index + 2, this.skills.length)));
     }
     return rows;
+  }
+
+  private toggleSkill(skillName: string): void {
+    this.skills = this.skills.map((skill: SkillItem): SkillItem => {
+      if (skill.name === skillName) {
+        return { name: skill.name, detail: skill.detail, enabled: !skill.enabled };
+      }
+      return skill;
+    });
   }
 
   @Builder
@@ -281,7 +296,13 @@ export struct SettingsPanel {
           .backgroundColor('#F2F5FA')
           .borderRadius(6)
         Blank().layoutWeight(1)
-        Image(skill.enabled ? $r('app.media.switch_on') : $r('app.media.switch_off')).width(24).height(14)
+        Image(skill.enabled ? $r('app.media.switch_on') : $r('app.media.switch_off'))
+          .width(32)
+          .height(20)
+          .objectFit(ImageFit.Contain)
+          .onClick(() => {
+            this.toggleSkill(skill.name);
+          })
       }
       .width('100%')
     }
@@ -327,7 +348,20 @@ export struct SettingsPanel {
   }
 
   private appVersion(): string {
-    return 'V1.0.0';
+    return `V${this.currentVersionName}`;
+  }
+
+  private loadCurrentVersionName(): void {
+    try {
+      const bundleInfo = bundleManager.getBundleInfoForSelfSync(
+        bundleManager.BundleFlag.GET_BUNDLE_INFO_DEFAULT
+      );
+      if (bundleInfo.versionName.length > 0) {
+        this.currentVersionName = bundleInfo.versionName;
+      }
+    } catch (_error) {
+      this.currentVersionName = '--';
+    }
   }
 
   @Builder

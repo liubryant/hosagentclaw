@@ -193,7 +193,7 @@ export struct VipMembershipPage {
         .textAlign(TextAlign.Center)
 
       Row() {
-        this.benefitItem('✦', '无限对话')
+        this.benefitItem('✦', 'AI智能体\n无限畅聊')
         this.benefitItem('◆', '专属功能')
         this.benefitItem('★', '优先体验')
       }
@@ -475,7 +475,7 @@ export struct VipMembershipPage {
             .fontFamily('MiSans-DemiBold')
             .fontColor('#FFEDBD')
 
-          Text('开通会员，解锁更多 AI 创作能力')
+          Text('开通会员，无限调用智能体，解锁更多 AI 创作能力')
             .fontSize(13)
             .fontColor('#9C8A75')
         }
@@ -508,7 +508,7 @@ export struct VipMembershipPage {
           .margin({ left: 16, right: 16, top: 20 })
 
         Row() {
-          this.detailBenefitItem('✦', '无限对话')
+          this.detailBenefitItem('✦', '无限调用智能体')
           this.detailBenefitItem('◈', '优先生成')
           this.detailBenefitItem('⬡', '专属功能')
         }
@@ -846,6 +846,7 @@ export struct VipMembershipPage {
     const token = AppPreferences.shared.userAccessToken;
     if (token === null || token.length === 0) {
       this.memberActive = false;
+      AppPreferences.shared.vipActive = false;
       this.memberExpiresAt = '';
       return;
     }
@@ -853,6 +854,7 @@ export struct VipMembershipPage {
     PaymentApi.shared.getMembership(token)
       .then((info: MembershipInfo) => {
         this.memberActive = info.active;
+        AppPreferences.shared.vipActive = info.active;
         this.memberExpiresAt = info.expiresAt ?? '';
         if (info.active) {
           this.statusText = '会员已开通，可继续续费';
@@ -969,6 +971,7 @@ export struct VipMembershipPage {
           this.stopOrderPolling();
           this.isPaying = false;
           this.memberActive = true;
+          AppPreferences.shared.vipActive = true;
           this.statusText = '支付成功，会员已开通';
           this.loadMembershipStatus();
         }
