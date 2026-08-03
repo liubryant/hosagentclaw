@@ -4,6 +4,7 @@
     "type": "entry",
     "description": "$string:module_desc",
     "mainElement": "EntryAbility",
+    "srcEntry": "./ets/abilitystage/HosAgentClawAbilityStage.ets",
     "deviceTypes": [
       "phone",
       "tablet"
@@ -42,6 +43,9 @@
     "requestPermissions": [
       {
         "name": "ohos.permission.INTERNET"
+      },
+      {
+        "name": "ohos.permission.GET_NETWORK_INFO"
       },
       {
         "name": "ohos.permission.MICROPHONE",

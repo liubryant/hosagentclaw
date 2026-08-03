@@ -5,6 +5,6 @@
 export class AdConfig {
   static readonly groMoreAppId: string = '5842720';
   static readonly splashAdSlotId: string = '104170415';
-  static readonly umengAppKey: string = '6a1010366f259537c7ad0122';
+  static readonly umengAppKey: string = '6a67297d934d206f584d7d1f';
   static readonly umengChannel: string = 'HarmonyOS';
 }
