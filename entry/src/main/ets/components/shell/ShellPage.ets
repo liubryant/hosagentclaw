@@ -43,6 +43,7 @@ export struct ShellPage {
     this.handleShortcutLaunch(action);
   };
   @State private activeTab: BottomTab = 'creation';
+  @StorageProp('shellBottomSafeInset') private bottomSafeInset: number = 24;
   @State private isSidebarVisible: boolean = true;
   @State private isImagePickerSheetVisible: boolean = false;
   @State private isCreationFullscreen: boolean = false;
@@ -61,9 +62,10 @@ export struct ShellPage {
   @State private webviewController: webview.WebviewController = new webview.WebviewController();
   @State private isLoggedIn: boolean = false;
   @State private userPhone: string = '';
+  @State private isTabTransitioning: boolean = false;
 
   aboutToAppear(): void {
-    SystemBarStyle.restoreDefault();
+    SystemBarStyle.applyProfileStatusBar(this.activeTab === 'profile');
     this.refreshLoginState();
     WindowStageHolder.abilityContext?.eventHub.on(SHORTCUT_LAUNCH_EVENT, this.shortcutLaunchListener);
     this.handleShortcutLaunch(ShortcutLaunchStore.consume());
@@ -77,7 +79,6 @@ export struct ShellPage {
     if (action === SHORTCUT_ACTION_AVATAR) {
       ShortcutLaunchStore.consume();
       this.activeTab = 'avatar';
-      SystemBarStyle.applyAvatarImmersive();
       this.isSidebarVisible = false;
       this.isCreationFullscreen = false;
       return;
@@ -248,23 +249,46 @@ export struct ShellPage {
     return `${phone.substring(0, 3)}****${phone.substring(7)}`;
   }
 
+  private bottomBarHeight(): number {
+    return 62 + this.bottomSafeInset;
+  }
+
   build() {
     Stack() {
-      Column() {
+      Stack({ alignContent: Alignment.Bottom }) {
         Row() {
           if (this.isSidebarVisible && this.activeTab === 'chat') {
             this.sidebar()
           }
 
           Column() {
-            if (!this.isCreationFullscreen && this.activeTab !== 'avatar') {
+            if (!this.isCreationFullscreen && this.activeTab === 'chat') {
               this.chatHeader()
               Divider().color(AgentClawDesign.divider).strokeWidth(0.5)
             }
 
             Stack() {
-              if (this.activeTab === 'creation') {
-                CreationGalleryPage({
+              // Keep XComponent visible to the render tree at one fixed size.
+              // Hidden/Visible toggles make Tuanjie republish the safe area,
+              // changing the viewport and bottom-tab height on every switch.
+              AvatarPage({
+                isActive: this.activeTab === 'avatar',
+                onRequireLogin: () => {
+                  this.refreshLoginState();
+                  if (!this.isLoggedIn) {
+                    this.isLoginPresented = true;
+                  }
+                },
+                onRequireVip: () => {
+                  this.openVipPage();
+                }
+              })
+                .width('100%')
+                .height('100%')
+                .position({ x: this.activeTab === 'avatar' ? 0 : -2000, y: 0 })
+                .hitTestBehavior(this.activeTab === 'avatar' ? HitTestMode.Default : HitTestMode.None)
+
+              CreationGalleryPage({
                 onLaunchImageChat: (prompt?: string) => {
                   this.activeTab = 'chat';
                   this.isSidebarVisible = true;
@@ -288,10 +312,12 @@ export struct ShellPage {
                   }
                 }
                 })
-                  .width('100%')
-                  .height('100%')
-              } else if (this.activeTab === 'profile') {
-                ProfilePage({
+                .width('100%')
+                .height('100%')
+                .visibility(this.activeTab === 'creation' ? Visibility.Visible : Visibility.Hidden)
+                .hitTestBehavior(this.activeTab === 'creation' ? HitTestMode.Default : HitTestMode.None)
+
+              ProfilePage({
                 onOpenSettings: () => {
                   this.isSettingsPresented = true;
                 },
@@ -306,10 +332,12 @@ export struct ShellPage {
                   this.openVipPage();
                 }
                 })
-                  .width('100%')
-                  .height('100%')
-              } else if (this.activeTab === 'chat') {
-                ChatPanel({
+                .width('100%')
+                .height('100%')
+                .visibility(this.activeTab === 'profile' ? Visibility.Visible : Visibility.Hidden)
+                .hitTestBehavior(this.activeTab === 'profile' ? HitTestMode.Default : HitTestMode.None)
+
+              ChatPanel({
                 store: this.store,
                 onOpenVideo: (url: string, coverURL: string) => {
                   this.openFullscreenVideo(url, coverURL);
@@ -330,26 +358,10 @@ export struct ShellPage {
                   this.fullscreenImageDocument = document;
                 }
                 })
-                  .width('100%')
-                  .height('100%')
-              } else if (this.activeTab === 'avatar') {
-                // XComponent owns a native surface. It must only exist while
-                // the avatar tab is active; Visibility.Hidden cannot reliably
-                // prevent that surface from drawing over sibling ArkUI pages.
-                AvatarPage({
-                  onRequireLogin: () => {
-                    this.refreshLoginState();
-                    if (!this.isLoggedIn) {
-                      this.isLoginPresented = true;
-                    }
-                  },
-                  onRequireVip: () => {
-                    this.openVipPage();
-                  }
-                })
-                  .width('100%')
-                  .height('100%')
-              }
+                .width('100%')
+                .height('100%')
+                .visibility(this.activeTab === 'chat' ? Visibility.Visible : Visibility.Hidden)
+                .hitTestBehavior(this.activeTab === 'chat' ? HitTestMode.Default : HitTestMode.None)
             }
             .layoutWeight(1)
             .width('100%')
@@ -360,21 +372,12 @@ export struct ShellPage {
           .borderRadius(this.isSidebarVisible && this.activeTab === 'chat' ? 20 : 0)
           .clip(true)
         }
-        .layoutWeight(1)
+        .height('100%')
         .width('100%')
+        .padding({ bottom: this.isCreationFullscreen ? 0 : this.bottomBarHeight() })
 
         if (!this.isCreationFullscreen) {
           this.bottomTabBar()
-          // Tuanjie XComponent removes the system gesture inset from ArkUI's
-          // available area after its surface becomes active. Restore only the
-          // missing inset for the avatar tab so the shared tab bar keeps the
-          // exact same vertical position as the other tabs.
-          if (this.activeTab === 'avatar') {
-            Blank()
-              .width('100%')
-              .height(28)
-              .backgroundColor(Color.White)
-          }
         }
       }
       .width('100%')
@@ -406,6 +409,7 @@ export struct ShellPage {
           }
         })
       }
+
 
       if (this.isLoginPresented) {
         LoginDialog({
@@ -582,6 +586,7 @@ export struct ShellPage {
       if (this.fullscreenImageDocument !== null) {
         this.fullscreenImagePreview(this.fullscreenImageDocument)
       }
+
     }
     .width('100%')
     .height('100%')
@@ -635,10 +640,10 @@ export struct ShellPage {
       this.tabItem('profile')
     }
     .width('100%')
-    .height(68)
+    .height(this.bottomBarHeight())
     .backgroundColor('#FCFFFFFF')
     .border({ width: { top: 0.5 }, color: AgentClawDesign.divider })
-    .padding({ left: 12, top: 7, right: 12, bottom: 7 })
+    .padding({ left: 12, top: 6, right: 12, bottom: 2 + this.bottomSafeInset })
     .onAreaChange((_oldValue: Area, newValue: Area) => {
       console.info(`tuanjiehub bottom_tab_area tab=${this.activeTab} width=${newValue.width} height=${newValue.height} x=${newValue.position.x} y=${newValue.position.y}`);
     })
@@ -684,13 +689,19 @@ export struct ShellPage {
       colors: [['#7557F6', 0], ['#A451EE', 1]] as [string, number][]
     } : { angle: 0, colors: [['rgba(0,0,0,0)', 0], ['rgba(0,0,0,0)', 1]] as [string, number][] })
     .onClick(() => {
+      if (this.activeTab === tab || this.isTabTransitioning) {
+        return;
+      }
+      const involvesAvatarSurface = this.activeTab === 'avatar' || tab === 'avatar';
+      if (involvesAvatarSurface) {
+        this.isTabTransitioning = true;
+        setTimeout((): void => {
+          this.isTabTransitioning = false;
+        }, 260);
+      }
       console.info(`tuanjiehub tab_select from=${this.activeTab} to=${tab}`);
       this.activeTab = tab;
-      if (tab === 'avatar') {
-        SystemBarStyle.applyAvatarImmersive();
-      } else {
-        SystemBarStyle.restoreDefault();
-      }
+      SystemBarStyle.applyProfileStatusBar(tab === 'profile');
       if (tab === 'chat') {
         this.isSidebarVisible = true;
       }

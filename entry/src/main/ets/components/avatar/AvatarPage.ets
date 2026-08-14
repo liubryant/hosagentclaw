@@ -48,6 +48,7 @@ const THINKING_STATUS_MESSAGES: string[] = [
 export struct AvatarPage {
   onRequireLogin: () => void = () => {};
   onRequireVip: () => void = () => {};
+  @Prop @Watch('onActiveChanged') isActive: boolean = false;
   @State private turns: AvatarTurn[] = [];
   @State private draft: string = '';
   @State private isThinking: boolean = false;
@@ -85,10 +86,9 @@ export struct AvatarPage {
 
   aboutToAppear(): void {
     console.info(`${TUANJIE_LOG} avatar_page appear displayIndex=${this.displayIndex}`);
-    this.avatarPageVisible = true;
     this.restoreConversation();
     AvatarSpeechService.shared.addStateListener(this.speechStateListener);
-    this.restoreSpeechVisualState();
+    this.onActiveChanged();
     setTimeout((): void => {
       console.info(`${TUANJIE_LOG} avatar_page ready_probe`);
       this.restoreSpeechVisualState();
@@ -98,10 +98,21 @@ export struct AvatarPage {
 
   aboutToDisappear(): void {
     console.info(`${TUANJIE_LOG} avatar_page disappear`);
-    this.avatarPageVisible = false;
+    this.deactivatePage();
     AvatarSpeechService.shared.removeStateListener(this.speechStateListener);
-    // The native XComponent is removed on tab switches, but CoreSpeechKit owns
-    // audible playback and must continue. Stop only page-bound work.
+  }
+
+  private onActiveChanged(): void {
+    if (this.isActive) {
+      this.avatarPageVisible = true;
+      this.restoreSpeechVisualState();
+    } else {
+      this.deactivatePage();
+    }
+  }
+
+  private deactivatePage(): void {
+    this.avatarPageVisible = false;
     this.recognitionGeneration += 1;
     if (this.isListening) {
       this.isListening = false;

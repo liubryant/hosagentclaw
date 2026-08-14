@@ -4,7 +4,7 @@
  */
 import { AbilityConstant, UIAbility, Want } from '@kit.AbilityKit';
 import { hilog } from '@kit.PerformanceAnalysisKit';
-import { font, window } from '@kit.ArkUI';
+import { display, font, window } from '@kit.ArkUI';
 import { AppPreferences } from '../storage/AppPreferences';
 import { EnvironmentManager } from '../common/AppConfig';
 import { GeneratedDocumentStore } from '../store/GeneratedDocumentStore';
@@ -69,6 +69,51 @@ export default class EntryAbility extends UIAbility {
     font.registerFont({ familyName: 'MiSans-DemiBold', familySrc: $rawfile('fonts/misans_demibold.ttf') });
     font.registerFont({ familyName: 'MiSans-Normal', familySrc: $rawfile('fonts/misans_normal.ttf') });
 
+    // Let Tuanjie finish its window setup before ArkUI becomes visible. The
+    // previous order loaded Index first, so Tuanjie and ShellPage raced to
+    // change fullscreen/system-bar state after the first frame was onscreen.
+    this.tuanjiePlayer.onWindowStageCreate(windowStage);
+    hilog.info(DOMAIN, 'tuanjiehub', 'player windowStageCreate complete');
+
+    const mainWindow = windowStage.getMainWindowSync();
+    Promise.all([
+      // Keep one immutable fullscreen geometry for the entire tab shell.
+      // ShellPage only overlays the status bar on Profile, so tab switches do
+      // not trigger a viewport resize.
+      mainWindow.setWindowLayoutFullScreen(true),
+      mainWindow.setWindowSystemBarEnable(['navigation']),
+      mainWindow.setWindowSystemBarProperties({
+        statusBarColor: '#FFFFFF',
+        statusBarContentColor: '#1A1A2E',
+        isStatusBarLightIcon: false,
+        navigationBarColor: '#FFFFFF',
+        navigationBarContentColor: '#1A1A2E',
+        isNavigationBarLightIcon: false
+      })
+    ]).then((): void => {
+      this.publishBottomSafeInset(mainWindow);
+      this.loadMainContent(windowStage);
+    }).catch((): void => {
+      this.publishBottomSafeInset(mainWindow);
+      this.loadMainContent(windowStage);
+    });
+  }
+
+  private publishBottomSafeInset(mainWindow: window.Window): void {
+    let insetVp = 24;
+    try {
+      const avoidArea = mainWindow.getWindowAvoidAreaIgnoringVisibility(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
+      const density = display.getDefaultDisplaySync().densityPixels;
+      if (avoidArea.bottomRect.height > 0 && density > 0) {
+        insetVp = Math.round(avoidArea.bottomRect.height / density);
+      }
+    } catch (_) {
+    }
+    AppStorage.setOrCreate('shellBottomSafeInset', insetVp);
+    hilog.info(DOMAIN, 'tuanjiehub', 'bottom safe inset vp=%{public}d', insetVp);
+  }
+
+  private loadMainContent(windowStage: window.WindowStage): void {
     windowStage.loadContent('pages/Index', (err) => {
       if (err.code) {
         hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
@@ -76,8 +121,6 @@ export default class EntryAbility extends UIAbility {
       }
       hilog.info(DOMAIN, 'testTag', 'Succeeded in loading the content.');
     });
-    this.tuanjiePlayer.onWindowStageCreate(windowStage);
-    hilog.info(DOMAIN, 'tuanjiehub', 'player windowStageCreate complete');
   }
 
   onWindowStageWillDestroy(): void {

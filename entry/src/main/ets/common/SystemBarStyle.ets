@@ -26,7 +26,21 @@ export class SystemBarStyle {
   }
 
   static applySplash(): void {
-    SystemBarStyle.applyImmersiveDark();
+    const mainWindow = SystemBarStyle.mainWindow();
+    if (!mainWindow) {
+      return;
+    }
+    // Splash ads are overlays. Changing fullscreen/status-bar visibility here
+    // resizes the ArkUI viewport when the ad closes and makes the bottom bar
+    // jump on the first home frame. Keep window geometry unchanged.
+    mainWindow.setWindowSystemBarProperties({
+      statusBarColor: '#000000',
+      statusBarContentColor: '#FFFFFF',
+      isStatusBarLightIcon: true,
+      navigationBarColor: '#FFFFFF',
+      navigationBarContentColor: '#1A1A2E',
+      isNavigationBarLightIcon: false
+    }).catch(() => {});
   }
 
   /**
@@ -49,6 +63,59 @@ export class SystemBarStyle {
       statusBarColor: '#00000000',
       statusBarContentColor: '#FFFFFF',
       isStatusBarLightIcon: true,
+      navigationBarColor: '#FFFFFF',
+      navigationBarContentColor: '#1A1A2E',
+      isNavigationBarLightIcon: false
+    }).catch(() => {});
+  }
+
+  /**
+   * Tab switches must not change window geometry. Toggling fullscreen/status
+   * bar visibility while an XComponent surface mounts causes a visible relayout
+   * and its async window operations can complete out of order on rapid taps.
+   */
+  static applyAvatarTabStable(): void {
+    const mainWindow = SystemBarStyle.mainWindow();
+    if (!mainWindow) {
+      return;
+    }
+    mainWindow.setWindowSystemBarProperties({
+      statusBarColor: '#4B2E78',
+      statusBarContentColor: '#FFFFFF',
+      isStatusBarLightIcon: true,
+      navigationBarColor: '#FFFFFF',
+      navigationBarContentColor: '#1A1A2E',
+      isNavigationBarLightIcon: false
+    }).catch(() => {});
+  }
+
+  static restoreTabDefaultStable(): void {
+    const mainWindow = SystemBarStyle.mainWindow();
+    if (!mainWindow) {
+      return;
+    }
+    mainWindow.setWindowSystemBarProperties({
+      statusBarColor: '#FFFFFF',
+      statusBarContentColor: '#1A1A2E',
+      isStatusBarLightIcon: false,
+      navigationBarColor: '#FFFFFF',
+      navigationBarContentColor: '#1A1A2E',
+      isNavigationBarLightIcon: false
+    }).catch(() => {});
+  }
+
+  static applyProfileStatusBar(isProfile: boolean): void {
+    const mainWindow = SystemBarStyle.mainWindow();
+    if (!mainWindow) {
+      return;
+    }
+    // Fullscreen geometry is established once by EntryAbility. Never reset it
+    // during a tab click, otherwise the compositor flashes the window surface.
+    mainWindow.setWindowSystemBarEnable(isProfile ? ['status', 'navigation'] : ['navigation']).catch(() => {});
+    mainWindow.setWindowSystemBarProperties({
+      statusBarColor: '#00000000',
+      statusBarContentColor: isProfile ? '#1A1A2E' : '#00000000',
+      isStatusBarLightIcon: false,
       navigationBarColor: '#FFFFFF',
       navigationBarContentColor: '#1A1A2E',
       isNavigationBarLightIcon: false

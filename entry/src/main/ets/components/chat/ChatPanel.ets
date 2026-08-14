@@ -274,19 +274,21 @@ export struct ChatPanel {
       Column({ space: 8 }) {
         if (this.hotspots.length > 0) {
           ForEach(this.hotspots, (item: TodayHotspotItem, index: number) => {
-            Row({ space: 4 }) {
-              Column({ space: 3 }) {
+            Row({ space: 12 }) {
+              Column({ space: 6 }) {
                 Text(item.title)
                   .fontSize(12)
                   .fontFamily('MiSans')
                   .fontWeight(FontWeight.Bold)
                   .fontColor('#333333')
+                  .lineHeight(18)
                   .maxLines(2)
                   .textOverflow({ overflow: TextOverflow.Ellipsis })
                 Text(item.subtitle)
-                  .fontSize(12)
+                  .fontSize(11)
                   .fontFamily('MiSans-Normal')
                   .fontColor(AgentClawDesign.secondaryText)
+                  .lineHeight(17)
                   .maxLines(3)
                   .textOverflow({ overflow: TextOverflow.Ellipsis })
               }
@@ -294,14 +296,14 @@ export struct ChatPanel {
               .layoutWeight(1)
 
               Image(HOTSPOT_BG_IMAGES[index % HOTSPOT_BG_IMAGES.length])
-                .width(34)
-                .height(26)
+                .width(30)
+                .height(30)
                 .objectFit(ImageFit.Contain)
             }
             .alignItems(VerticalAlign.Top)
             .width('100%')
-            .height(100)
-            .padding(8)
+            .height(116)
+            .padding({ left: 12, right: 12, top: 12, bottom: 12 })
             .backgroundColor('#F5F8FA')
             .borderRadius(16)
             .onClick(() => {
@@ -311,19 +313,21 @@ export struct ChatPanel {
           }, (item: TodayHotspotItem, index: number) => `hotspot-${index}`)
         } else {
           ForEach(QUICK_PROMPTS, (item: QuickPrompt) => {
-            Row({ space: 4 }) {
-              Column({ space: 3 }) {
+            Row({ space: 12 }) {
+              Column({ space: 6 }) {
                 Text(item.title)
                   .fontSize(12)
                   .fontFamily('MiSans')
                   .fontWeight(FontWeight.Bold)
                   .fontColor('#333333')
+                  .lineHeight(18)
                   .maxLines(2)
                   .textOverflow({ overflow: TextOverflow.Ellipsis })
                 Text(item.subtitle)
-                  .fontSize(12)
+                  .fontSize(11)
                   .fontFamily('MiSans-Normal')
                   .fontColor(AgentClawDesign.secondaryText)
+                  .lineHeight(17)
                   .maxLines(3)
                   .textOverflow({ overflow: TextOverflow.Ellipsis })
               }
@@ -331,14 +335,14 @@ export struct ChatPanel {
               .layoutWeight(1)
 
               Image(item.imageName)
-                .width(34)
-                .height(26)
+                .width(30)
+                .height(30)
                 .objectFit(ImageFit.Contain)
             }
             .alignItems(VerticalAlign.Top)
             .width('100%')
-            .height(100)
-            .padding(8)
+            .height(116)
+            .padding({ left: 12, right: 12, top: 12, bottom: 12 })
             .backgroundColor('#F5F8FA')
             .borderRadius(16)
             .onClick(() => {
@@ -350,7 +354,7 @@ export struct ChatPanel {
       }
       .width('100%')
       .constraintSize({ maxWidth: 420 })
-      .padding({ left: 22, right: 22, top: 24 })
+      .padding({ left: 10, right: 10, top: 24 })
     }
     .width('100%')
     .padding({ top: 6, bottom: 12 })

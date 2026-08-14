@@ -283,13 +283,14 @@ export struct CreationGalleryPage {
     Stack() {
       Column() {
         Text('今天用AI创作什么？')
-          .fontSize(27)
+          .fontSize(26)
           .fontWeight(FontWeight.Bold)
           .fontFamily('MiSans-DemiBold')
           .fontColor('#6750F5')
+          .lineHeight(36)
           .textAlign(TextAlign.Center)
           .width('100%')
-          .margin({ top: 26, bottom: 0 })
+          .margin({ top: 36, bottom: 10 })
           .padding({ left: 20, right: 20 })
 
         Row() {
@@ -301,7 +302,7 @@ export struct CreationGalleryPage {
         .backgroundColor('#F0F0F5')
         .borderRadius(14)
         .padding(4)
-        .margin({ left: 20, right: 20, top: 18 })
+        .margin({ left: 20, right: 20, top: 20 })
         .constraintSize({ maxWidth: '100%' })
 
         Swiper() {
@@ -601,6 +602,7 @@ export struct CreationGalleryPage {
       Video({ src: $rawfile('creation/videos/' + this.fullscreenVideo) })
         .width('100%').height('100%').objectFit(ImageFit.Contain)
         .controls(false).autoPlay(true).loop(true)
+
 
       Column() {
         Row() {
