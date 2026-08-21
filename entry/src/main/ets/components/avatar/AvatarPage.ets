@@ -658,7 +658,7 @@ export struct AvatarPage {
             .backgroundColor('#3D000000')
             .borderRadius(12)
         }
-        .padding({ left: 17, top: 44 })
+        .padding({ left: 17, top: 12 })
 
         if (this.isSpeaking || this.isListening || this.isThinking) {
           Row({ space: 7 }) {

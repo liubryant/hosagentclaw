@@ -8,6 +8,7 @@ import { AppEnvironment, EnvironmentManager, environmentDisplayName } from '../.
 import { AppPreferences } from '../../storage/AppPreferences';
 import { GatewayClient } from '../../gateway/GatewayClient';
 import { ChatStore } from '../../store/ChatStore';
+import { AppBackNavigator } from '../../common/AppBackNavigator';
 
 type SettingsPage = 'skills' | 'about';
 
@@ -30,6 +31,7 @@ const ICP_URL = 'https://beian.miit.gov.cn/';
 
 @Component
 export struct SettingsPanel {
+  private readonly backHandlerId: string = AppBackNavigator.createHandlerId('settings');
   store: ChatStore = new ChatStore();
   onClose: () => void = () => {};
   onOpenWebView: (url: string, title: string) => void = () => {};
@@ -45,8 +47,16 @@ export struct SettingsPanel {
   private lastTapTime: number = Date.now();
 
   aboutToAppear(): void {
+    AppBackNavigator.register(this.backHandlerId, (): boolean => {
+      this.onClose();
+      return true;
+    });
     this.currentEnvironment = EnvironmentManager.shared.currentEnvironment;
     this.loadCurrentVersionName();
+  }
+
+  aboutToDisappear(): void {
+    AppBackNavigator.unregister(this.backHandlerId);
   }
 
   build() {
@@ -115,14 +125,23 @@ export struct SettingsPanel {
   @Builder
   private compactHeader() {
     Row() {
+      Row() {
+        Image($rawfile('icons/ic_back.svg')).width(22).height(22)
+      }
+      .width(40)
+      .height(40)
+      .justifyContent(FlexAlign.Center)
+      .onClick(this.onClose)
+
       Row({ space: 6 }) {
         Image($r('app.media.slide_setting')).width(18).height(18)
         Text('设置').fontSize(13).fontWeight(FontWeight.Bold).fontColor('#212121')
       }
       Blank().layoutWeight(1)
-      Text('✕').fontSize(12).fontWeight(FontWeight.Bold).onClick(this.onClose)
     }
     .width('100%')
+    .height(40)
+    .alignItems(VerticalAlign.Center)
   }
 
   @Builder
@@ -148,14 +167,23 @@ export struct SettingsPanel {
   private menu() {
     Column() {
       Row() {
+        Row() {
+          Image($rawfile('icons/ic_back.svg')).width(22).height(22)
+        }
+        .width(40)
+        .height(40)
+        .justifyContent(FlexAlign.Center)
+        .onClick(this.onClose)
+
         Row({ space: 8 }) {
           Image($r('app.media.slide_setting')).width(22).height(22)
           Text('设置').fontSize(16).fontWeight(FontWeight.Bold).fontColor('#212121')
         }
         Blank().layoutWeight(1)
-        Text('✕').fontSize(13).fontWeight(FontWeight.Bold).onClick(this.onClose)
       }
       .width('100%')
+      .height(40)
+      .alignItems(VerticalAlign.Center)
       .margin({ bottom: 40 })
 
       this.menuButton('skills', $r('app.media.list_skill'), '技能管理')

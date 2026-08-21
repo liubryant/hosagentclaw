@@ -77,11 +77,11 @@ export default class EntryAbility extends UIAbility {
 
     const mainWindow = windowStage.getMainWindowSync();
     Promise.all([
-      // Keep one immutable fullscreen geometry for the entire tab shell.
-      // ShellPage only overlays the status bar on Profile, so tab switches do
-      // not trigger a viewport resize.
+      // Keep one immutable fullscreen/system-bar geometry for the entire tab
+      // shell. Every tab displays the status bar; tab-specific code changes
+      // only its paint, so switching never resizes/recomposes the window.
       mainWindow.setWindowLayoutFullScreen(true),
-      mainWindow.setWindowSystemBarEnable(['navigation']),
+      mainWindow.setWindowSystemBarEnable(['status', 'navigation']),
       mainWindow.setWindowSystemBarProperties({
         statusBarColor: '#FFFFFF',
         statusBarContentColor: '#1A1A2E',
@@ -91,26 +91,38 @@ export default class EntryAbility extends UIAbility {
         isNavigationBarLightIcon: false
       })
     ]).then((): void => {
-      this.publishBottomSafeInset(mainWindow);
+      this.publishSafeInsets(mainWindow);
       this.loadMainContent(windowStage);
     }).catch((): void => {
-      this.publishBottomSafeInset(mainWindow);
+      this.publishSafeInsets(mainWindow);
       this.loadMainContent(windowStage);
     });
   }
 
-  private publishBottomSafeInset(mainWindow: window.Window): void {
-    let insetVp = 24;
+  private publishSafeInsets(mainWindow: window.Window): void {
+    let bottomInsetVp = 24;
+    let topInsetVp = 32;
     try {
-      const avoidArea = mainWindow.getWindowAvoidAreaIgnoringVisibility(window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
       const density = display.getDefaultDisplaySync().densityPixels;
-      if (avoidArea.bottomRect.height > 0 && density > 0) {
-        insetVp = Math.round(avoidArea.bottomRect.height / density);
+      const navigationArea = mainWindow.getWindowAvoidAreaIgnoringVisibility(
+        window.AvoidAreaType.TYPE_NAVIGATION_INDICATOR);
+      const systemArea = mainWindow.getWindowAvoidAreaIgnoringVisibility(window.AvoidAreaType.TYPE_SYSTEM);
+      const cutoutArea = mainWindow.getWindowAvoidAreaIgnoringVisibility(window.AvoidAreaType.TYPE_CUTOUT);
+      if (density > 0) {
+        if (navigationArea.bottomRect.height > 0) {
+          bottomInsetVp = Math.round(navigationArea.bottomRect.height / density);
+        }
+        const topHeightPx = Math.max(systemArea.topRect.height, cutoutArea.topRect.height);
+        if (topHeightPx > 0) {
+          topInsetVp = Math.round(topHeightPx / density);
+        }
       }
     } catch (_) {
     }
-    AppStorage.setOrCreate('shellBottomSafeInset', insetVp);
-    hilog.info(DOMAIN, 'tuanjiehub', 'bottom safe inset vp=%{public}d', insetVp);
+    AppStorage.setOrCreate('shellTopSafeInset', topInsetVp);
+    AppStorage.setOrCreate('shellBottomSafeInset', bottomInsetVp);
+    hilog.info(DOMAIN, 'tuanjiehub', 'safe insets top=%{public}d bottom=%{public}d',
+      topInsetVp, bottomInsetVp);
   }
 
   private loadMainContent(windowStage: window.WindowStage): void {

@@ -9,11 +9,13 @@ import { AlipayManager } from '../../pay/AlipayManager';
 import { PaymentApi } from '../../pay/PaymentApi';
 import { MembershipInfo, VipOrderData, VipProduct } from '../../pay/VipProduct';
 import { QuotaManager } from '../../quota/QuotaManager';
+import { AppBackNavigator } from '../../common/AppBackNavigator';
 
 const VIP_AGREEMENT_URL = 'https://www.cjym123.cn/agreement_agentclaw_vip.html';
 
 @Component
 export struct VipMembershipPage {
+  private readonly backHandlerId: string = AppBackNavigator.createHandlerId('vip');
   onClose: () => void = () => {};
   onRequireLogin: () => void = () => {};
   onOpenWebView: (url: string, title: string) => void = () => {};
@@ -33,11 +35,22 @@ export struct VipMembershipPage {
   private orderPollCount: number = 0;
 
   aboutToAppear(): void {
+    AppBackNavigator.register(this.backHandlerId, (): boolean => this.handleBack());
     this.reload();
   }
 
   aboutToDisappear(): void {
+    AppBackNavigator.unregister(this.backHandlerId);
     this.stopOrderPolling();
+  }
+
+  private handleBack(): boolean {
+    if (this.isBenefitsDetailPresented) {
+      this.isBenefitsDetailPresented = false;
+      return true;
+    }
+    this.onClose();
+    return true;
   }
 
   private reload(): void {
@@ -83,7 +96,7 @@ export struct VipMembershipPage {
   private header() {
     Row({ space: 8 }) {
       Row() {
-        Image($rawfile('icons/ic_back_black_dark.png'))
+        Image($rawfile('icons/ic_vip_back.svg'))
           .width(20)
           .height(20)
           .objectFit(ImageFit.Contain)

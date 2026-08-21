@@ -27,6 +27,7 @@ import { AvatarPage } from '../avatar/AvatarPage';
 import { AppPreferences } from '../../storage/AppPreferences';
 import { SystemBarStyle } from '../../common/SystemBarStyle';
 import { WindowStageHolder } from '../../common/WindowStageHolder';
+import { AppBackNavigator } from '../../common/AppBackNavigator';
 import {
   SHORTCUT_ACTION_QUICK_IMAGE,
   SHORTCUT_ACTION_AVATAR,
@@ -38,11 +39,13 @@ type BottomTab = 'chat' | 'creation' | 'avatar' | 'profile';
 
 @Component
 export struct ShellPage {
+  private readonly backHandlerId: string = AppBackNavigator.createHandlerId('shell');
   private store: ChatStore = new ChatStore();
   private readonly shortcutLaunchListener = (action: string): void => {
     this.handleShortcutLaunch(action);
   };
   @State private activeTab: BottomTab = 'creation';
+  @StorageProp('shellTopSafeInset') private topSafeInset: number = 32;
   @StorageProp('shellBottomSafeInset') private bottomSafeInset: number = 24;
   @State private isSidebarVisible: boolean = true;
   @State private isImagePickerSheetVisible: boolean = false;
@@ -65,14 +68,58 @@ export struct ShellPage {
   @State private isTabTransitioning: boolean = false;
 
   aboutToAppear(): void {
-    SystemBarStyle.applyProfileStatusBar(this.activeTab === 'profile');
+    AppBackNavigator.register(this.backHandlerId, (): boolean => this.handleBack());
+    this.applyActiveTabSystemBar();
     this.refreshLoginState();
     WindowStageHolder.abilityContext?.eventHub.on(SHORTCUT_LAUNCH_EVENT, this.shortcutLaunchListener);
     this.handleShortcutLaunch(ShortcutLaunchStore.consume());
   }
 
   aboutToDisappear(): void {
+    AppBackNavigator.unregister(this.backHandlerId);
     WindowStageHolder.abilityContext?.eventHub.off(SHORTCUT_LAUNCH_EVENT, this.shortcutLaunchListener);
+  }
+
+  private handleBack(): boolean {
+    if (this.fullscreenImageDocument !== null) {
+      this.fullscreenImageDocument = null;
+      return true;
+    }
+    if (this.fullscreenVideoURL.length > 0) {
+      this.closeFullscreenVideo();
+      return true;
+    }
+    if (this.webViewUrl.length > 0) {
+      this.webViewUrl = '';
+      this.webViewTitle = '';
+      return true;
+    }
+    if (this.isIdeasPresented) {
+      this.isIdeasPresented = false;
+      return true;
+    }
+    if (this.isImagePickerSheetVisible) {
+      this.closeImagePickerSheet();
+      return true;
+    }
+    if (this.isVipPresented) {
+      this.closeVipPage();
+      return true;
+    }
+    if (this.isLoginPresented) {
+      this.isLoginPresented = false;
+      this.refreshLoginState();
+      return true;
+    }
+    if (this.isDocumentsPresented) {
+      this.isDocumentsPresented = false;
+      return true;
+    }
+    if (this.isSettingsPresented) {
+      this.isSettingsPresented = false;
+      return true;
+    }
+    return false;
   }
 
   private handleShortcutLaunch(action: string): void {
@@ -99,14 +146,23 @@ export struct ShellPage {
     this.userPhone = AppPreferences.shared.userPhone ?? '';
   }
 
+  private applyActiveTabSystemBar(): void {
+    SystemBarStyle.applyTabStatusBar();
+  }
+
+  private activateBackHandler(): void {
+    AppBackNavigator.register(this.backHandlerId, (): boolean => this.handleBack());
+  }
+
   private openVipPage(): void {
     this.isVipPresented = true;
+    this.activateBackHandler();
     SystemBarStyle.applyVip();
   }
 
   private closeVipPage(): void {
     this.isVipPresented = false;
-    SystemBarStyle.restoreDefault();
+    this.applyActiveTabSystemBar();
     this.refreshLoginState();
   }
 
@@ -114,6 +170,7 @@ export struct ShellPage {
     this.fullscreenVideoURL = url;
     this.fullscreenVideoCoverURL = coverURL;
     this.videoPlaybackError = '';
+    this.activateBackHandler();
     SystemBarStyle.applyVideo();
   }
 
@@ -121,7 +178,7 @@ export struct ShellPage {
     this.fullscreenVideoURL = '';
     this.fullscreenVideoCoverURL = '';
     this.videoPlaybackError = '';
-    SystemBarStyle.restoreDefault();
+    this.applyActiveTabSystemBar();
   }
 
   private clearAttachedImage(): void {
@@ -308,7 +365,7 @@ export struct ShellPage {
                   if (fs) {
                     SystemBarStyle.applyImmersiveDark();
                   } else {
-                    SystemBarStyle.restoreDefault();
+                    this.applyActiveTabSystemBar();
                   }
                 }
                 })
@@ -327,6 +384,7 @@ export struct ShellPage {
                 onOpenWebView: (url: string, title: string) => {
                   this.webViewUrl = url;
                   this.webViewTitle = title;
+                  this.activateBackHandler();
                 },
                 onOpenVip: () => {
                   this.openVipPage();
@@ -350,12 +408,14 @@ export struct ShellPage {
                 },
                 onImagePickerOpen: () => {
                   this.isImagePickerSheetVisible = true;
+                  this.activateBackHandler();
                 },
                 onClearAttachedImage: () => {
                   this.clearAttachedImage();
                 },
                 onOpenImagePreview: (document: GeneratedDocument) => {
                   this.fullscreenImageDocument = document;
+                  this.activateBackHandler();
                 }
                 })
                 .width('100%')
@@ -374,7 +434,10 @@ export struct ShellPage {
         }
         .height('100%')
         .width('100%')
-        .padding({ bottom: this.isCreationFullscreen ? 0 : this.bottomBarHeight() })
+        .padding({
+          top: this.isCreationFullscreen ? 0 : this.topSafeInset,
+          bottom: this.isCreationFullscreen ? 0 : this.bottomBarHeight()
+        })
 
         if (!this.isCreationFullscreen) {
           this.bottomTabBar()
@@ -393,6 +456,7 @@ export struct ShellPage {
           onOpenWebView: (url: string, title: string) => {
             this.webViewUrl = url;
             this.webViewTitle = title;
+            this.activateBackHandler();
           }
         })
       }
@@ -436,6 +500,7 @@ export struct ShellPage {
             this.closeVipPage();
             this.webViewUrl = url;
             this.webViewTitle = title;
+            this.activateBackHandler();
           }
         })
           .width('100%')
@@ -460,21 +525,25 @@ export struct ShellPage {
 
           Column() {
             Row() {
+              Row() {
+                Image($rawfile('icons/ic_back.svg')).width(22).height(22)
+              }
+              .width(44)
+              .height(44)
+              .justifyContent(FlexAlign.Center)
+              .onClick(() => {
+                this.isIdeasPresented = false;
+              })
+
               Text('灵感泉涌')
                 .fontSize(16)
                 .fontWeight(FontWeight.Bold)
                 .fontFamily('MiSans-DemiBold')
                 .fontColor(AgentClawDesign.primaryText)
                 .layoutWeight(1)
-              Text(Icons.close)
-                .fontSize(14)
-                .fontColor(AgentClawDesign.secondaryText)
-                .onClick(() => {
-                  this.isIdeasPresented = false;
-                })
             }
             .width('100%')
-            .padding({ left: 16, right: 16, top: 16, bottom: 8 })
+            .padding({ left: 4, right: 16, top: 12, bottom: 8 })
 
             FancyIdeasPage({
               onUseIdea: (idea: FancyIdea) => {
@@ -498,12 +567,12 @@ export struct ShellPage {
       if (this.webViewUrl.length > 0) {
         Column() {
           Row({ space: 8 }) {
-            Text('←')
-              .fontSize(18)
-              .fontColor(AgentClawDesign.primaryText)
+            Row() {
+              Image($rawfile('icons/ic_back.svg')).width(22).height(22)
+            }
               .width(44)
               .height(44)
-              .textAlign(TextAlign.Center)
+              .justifyContent(FlexAlign.Center)
               .onClick(() => {
                 this.webViewUrl = '';
                 this.webViewTitle = '';
@@ -529,6 +598,7 @@ export struct ShellPage {
         .width('100%')
         .height('100%')
         .backgroundColor(Color.White)
+        .padding({ top: this.topSafeInset })
         .position({ x: 0, y: 0 })
         .zIndex(999)
       }
@@ -563,12 +633,12 @@ export struct ShellPage {
               .borderRadius(8)
           }
 
-          Text('✕')
-            .fontSize(18)
-            .fontColor(Color.White)
+          Row() {
+            Image($rawfile('icons/ic_vip_back.svg')).width(22).height(22)
+          }
             .width(44)
             .height(44)
-            .textAlign(TextAlign.Center)
+            .justifyContent(FlexAlign.Center)
             .backgroundColor('rgba(0,0,0,0.58)')
             .borderRadius(22)
             .position({ x: 18, y: 54 })
@@ -597,6 +667,16 @@ export struct ShellPage {
     Stack() {
       Column() {
         Row() {
+          Row() {
+            Image($rawfile('icons/ic_vip_back.svg')).width(22).height(22)
+          }
+          .width(44)
+          .height(44)
+          .justifyContent(FlexAlign.Center)
+          .onClick(() => {
+            this.fullscreenImageDocument = null;
+          })
+
           Text(document.displayName)
             .fontSize(14)
             .fontWeight(FontWeight.Bold)
@@ -604,18 +684,10 @@ export struct ShellPage {
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .layoutWeight(1)
-
-          Text(Icons.close)
-            .fontSize(18)
-            .fontColor(Color.White)
-            .padding(12)
-            .onClick(() => {
-              this.fullscreenImageDocument = null;
-            })
         }
         .width('100%')
         .height(56)
-        .padding({ left: 16, right: 8 })
+        .padding({ left: 6, right: 14 })
 
         Image(fileUri.getUriFromPath(GeneratedDocumentStore.shared.fileURL(document)))
           .layoutWeight(1)
@@ -673,21 +745,22 @@ export struct ShellPage {
               $rawfile('icons/ic_bottom_profile.svg'))
           .width(22)
           .height(22)
-          .fillColor(this.activeTab === tab ? Color.White : '#7B8190')
+          .fillColor(this.activeTab === tab ? '#1677FF' : '#7B8190')
       }
       Text(tab === 'creation' ? '画图' : tab === 'chat' ? '对话' : tab === 'avatar' ? '智能体' : '我的')
         .fontSize(11)
         .fontFamily('MiSans-DemiBold')
-        .fontColor(this.activeTab === tab ? Color.White : '#7B8190')
+        .fontColor(this.activeTab === tab ? '#1677FF' : '#7B8190')
     }
     .layoutWeight(1)
-    .height('100%')
+    .height(50)
     .justifyContent(FlexAlign.Center)
-    .borderRadius(15)
-    .linearGradient(this.activeTab === tab ? {
-      angle: 0,
-      colors: [['#7557F6', 0], ['#A451EE', 1]] as [string, number][]
-    } : { angle: 0, colors: [['rgba(0,0,0,0)', 0], ['rgba(0,0,0,0)', 1]] as [string, number][] })
+    .backgroundColor(this.activeTab === tab ? '#0F1677FF' : Color.Transparent)
+    .borderRadius(18)
+    .margin({
+      left: tab === 'creation' ? 0 : 4,
+      right: tab === 'profile' ? 0 : 4
+    })
     .onClick(() => {
       if (this.activeTab === tab || this.isTabTransitioning) {
         return;
@@ -701,7 +774,6 @@ export struct ShellPage {
       }
       console.info(`tuanjiehub tab_select from=${this.activeTab} to=${tab}`);
       this.activeTab = tab;
-      SystemBarStyle.applyProfileStatusBar(tab === 'profile');
       if (tab === 'chat') {
         this.isSidebarVisible = true;
       }
@@ -746,6 +818,7 @@ export struct ShellPage {
       Column({ space: 4 }) {
         this.sidebarNavItem(Icons.sparkles, '灵感泉涌', '提示词模板', () => {
           this.isIdeasPresented = true;
+          this.activateBackHandler();
         })
         this.sidebarNavItem(Icons.folder, '文件', '文件与分享', () => {
           this.isDocumentsPresented = true;

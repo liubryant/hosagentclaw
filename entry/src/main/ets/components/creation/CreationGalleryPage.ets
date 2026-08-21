@@ -3,6 +3,7 @@
  * @mail bryant_liu24@126.com
  */
 import { AgentClawDesign } from '../../common/Design';
+import { AppBackNavigator } from '../../common/AppBackNavigator';
 import { common } from '@kit.AbilityKit';
 import { image } from '@kit.ImageKit';
 import { media } from '@kit.MediaKit';
@@ -133,6 +134,7 @@ const galleryVideoScroller: Scroller = new Scroller();
 
 @Component
 export struct CreationGalleryPage {
+  private readonly backHandlerId: string = AppBackNavigator.createHandlerId('creation-gallery');
   onLaunchImageChat: (prompt?: string) => void = () => {};
   onLaunchVideoChat: () => void = () => {};
   onFullscreenChanged: (isFullscreen: boolean) => void = () => {};
@@ -145,6 +147,7 @@ export struct CreationGalleryPage {
   @State private videoThumbnails: (image.PixelMap | undefined)[] = galleryVideoThumbnails;
 
   aboutToAppear(): void {
+    AppBackNavigator.register(this.backHandlerId, (): boolean => this.handleBack());
     this.activeTab = galleryActiveTab;
     this.displayedImageFiles = galleryImageFiles;
     this.imagePrompts = galleryImagePrompts;
@@ -163,6 +166,24 @@ export struct CreationGalleryPage {
       galleryImageScroller.scrollTo({ xOffset: 0, yOffset: galleryImageScrollY, animation: { duration: 0 } });
       galleryVideoScroller.scrollTo({ xOffset: 0, yOffset: galleryVideoScrollY, animation: { duration: 0 } });
     }, 80);
+  }
+
+  aboutToDisappear(): void {
+    AppBackNavigator.unregister(this.backHandlerId);
+  }
+
+  private handleBack(): boolean {
+    if (this.fullscreenVideo.length > 0) {
+      this.fullscreenVideo = '';
+      this.onFullscreenChanged(false);
+      return true;
+    }
+    if (this.fullscreenImage.length > 0) {
+      this.fullscreenImage = '';
+      this.onFullscreenChanged(false);
+      return true;
+    }
+    return false;
   }
 
   private async loadCreationImages(): Promise<void> {
@@ -284,13 +305,13 @@ export struct CreationGalleryPage {
       Column() {
         Text('今天用AI创作什么？')
           .fontSize(26)
-          .fontWeight(FontWeight.Bold)
-          .fontFamily('MiSans-DemiBold')
+          .fontWeight(FontWeight.Normal)
+          .fontFamily('MiSans-Normal')
           .fontColor('#6750F5')
           .lineHeight(36)
           .textAlign(TextAlign.Center)
           .width('100%')
-          .margin({ top: 36, bottom: 10 })
+          .margin({ top: 24, bottom: 10 })
           .padding({ left: 20, right: 20 })
 
         Row() {
@@ -469,12 +490,12 @@ export struct CreationGalleryPage {
 
               Stack() {
                 Image($rawfile('icons/ic_creation_play.svg'))
-                  .width(20)
-                  .height(20)
+                  .width(13)
+                  .height(13)
               }
-              .width(42)
-              .height(42)
-              .borderRadius(21)
+              .width(28)
+              .height(28)
+              .borderRadius(14)
               .backgroundColor('rgba(24,25,32,0.72)')
               .border({ width: 1, color: 'rgba(255,255,255,0.33)' })
               .margin({ top: 10, right: 10 })
@@ -558,7 +579,7 @@ export struct CreationGalleryPage {
       Column() {
         Row() {
           Column() {
-            Text('✕').fontSize(16).fontColor(Color.White)
+            Image($rawfile('icons/ic_vip_back.svg')).width(22).height(22)
           }
           .width(44).height(44).borderRadius(22)
           .justifyContent(FlexAlign.Center)
@@ -607,7 +628,7 @@ export struct CreationGalleryPage {
       Column() {
         Row() {
           Column() {
-            Text('✕').fontSize(16).fontColor(Color.White)
+            Image($rawfile('icons/ic_vip_back.svg')).width(22).height(22)
           }
           .width(44).height(44).borderRadius(22)
           .justifyContent(FlexAlign.Center)

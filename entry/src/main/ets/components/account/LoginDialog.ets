@@ -4,9 +4,9 @@
  */
 import { common } from '@kit.AbilityKit';
 import { AgentClawDesign } from '../../common/Design';
-import { Icons } from '../../common/Icons';
 import { AppPreferences } from '../../storage/AppPreferences';
 import { AuthService } from '../../gateway/AuthService';
+import { AppBackNavigator } from '../../common/AppBackNavigator';
 
 const AGREEMENT_URL = 'https://www.cjym123.cn/agreement_agentclaw.html';
 const PRIVACY_URL = 'https://www.cjym123.cn/privacy_agentclaw.html';
@@ -44,6 +44,7 @@ function isValidLoginCode(code: string): boolean {
  */
 @Component
 export struct LoginDialog {
+  private readonly backHandlerId: string = AppBackNavigator.createHandlerId('login');
   onClose: () => void = () => {
   };
 
@@ -70,6 +71,7 @@ export struct LoginDialog {
   private setPasswordCountdownTimer: number = -1;
 
   aboutToAppear(): void {
+    AppBackNavigator.register(this.backHandlerId, (): boolean => this.handleBack());
     if (AppPreferences.shared.isLoggedIn) {
       this.loggedInPhone = AppPreferences.shared.userPhone ?? '';
       this.section = 'loggedIn';
@@ -79,8 +81,19 @@ export struct LoginDialog {
   }
 
   aboutToDisappear(): void {
+    AppBackNavigator.unregister(this.backHandlerId);
     this.clearCodeCountdown();
     this.clearSetPasswordCountdown();
+  }
+
+  private handleBack(): boolean {
+    if (this.section === 'setPassword') {
+      this.clearSetPasswordCountdown();
+      this.section = 'loggedIn';
+      return true;
+    }
+    this.onClose();
+    return true;
   }
 
   build() {
@@ -116,6 +129,17 @@ export struct LoginDialog {
   @Builder
   private header() {
     Row() {
+      Row() {
+        Image($rawfile('icons/ic_back.svg')).width(22).height(22)
+      }
+      .width(40)
+      .height(40)
+      .justifyContent(FlexAlign.Center)
+      .margin({ left: -10, right: 4 })
+      .onClick(() => {
+        this.handleBack();
+      })
+
       Column({ space: 6 }) {
         Text('登录').fontSize(22).fontWeight(FontWeight.Bold).fontColor(AgentClawDesign.primaryText)
         Text(this.subtitleText())
@@ -124,14 +148,9 @@ export struct LoginDialog {
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
-
-      Text(Icons.close)
-        .fontSize(15)
-        .fontColor(Color.Black)
-        .onClick(this.onClose)
     }
     .width('100%')
-    .alignItems(VerticalAlign.Top)
+    .alignItems(VerticalAlign.Center)
   }
 
   private subtitleText(): string {

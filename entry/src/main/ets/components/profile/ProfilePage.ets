@@ -7,6 +7,7 @@ import { bundleManager } from '@kit.AbilityKit';
 import { AppPreferences } from '../../storage/AppPreferences';
 import { LoginDialog } from '../account/LoginDialog';
 import { AuthService } from '../../gateway/AuthService';
+import { AppBackNavigator } from '../../common/AppBackNavigator';
 
 const AGREEMENT_URL = 'https://www.cjym123.cn/agreement_agentclaw.html';
 const PRIVACY_URL = 'https://www.cjym123.cn/privacy_agentclaw.html';
@@ -19,6 +20,7 @@ function isValidLoginCode(code: string): boolean {
 
 @Component
 export struct ProfilePage {
+  private readonly backHandlerId: string = AppBackNavigator.createHandlerId('profile');
   onOpenSettings: () => void = () => {};
   onOpenDocuments: () => void = () => {};
   onOpenWebView: (url: string, title: string) => void = () => {};
@@ -38,12 +40,27 @@ export struct ProfilePage {
   private deleteCodeCountdownTimer: number = -1;
 
   aboutToAppear(): void {
+    AppBackNavigator.register(this.backHandlerId, (): boolean => this.handleBack());
     this.refreshLoginState();
     this.loadCurrentVersionName();
   }
 
   aboutToDisappear(): void {
+    AppBackNavigator.unregister(this.backHandlerId);
     this.clearDeleteCodeCountdown();
+  }
+
+  private handleBack(): boolean {
+    if (this.isDeleteAccountPresented) {
+      this.closeDeleteAccountDialog();
+      return true;
+    }
+    if (this.isLoginPresented) {
+      this.isLoginPresented = false;
+      this.refreshLoginState();
+      return true;
+    }
+    return false;
   }
 
   private refreshLoginState(): void {
@@ -75,7 +92,7 @@ export struct ProfilePage {
             .fontFamily('MiSans-DemiBold')
             .fontColor('#15151A')
             .alignSelf(ItemAlign.Start)
-            .margin({ top: 16 })
+            .margin({ top: 0 })
 
           // Login card
           this.loginCard()
@@ -172,7 +189,7 @@ export struct ProfilePage {
             })
         }
         .width('100%')
-        .padding({ left: 20, right: 20, top: 16, bottom: 28 })
+        .padding({ left: 20, right: 20, top: 8, bottom: 28 })
       }
       .width('100%')
       .height('100%')
@@ -204,7 +221,7 @@ export struct ProfilePage {
     Row({ space: 12 }) {
       Column() {
         Text('VIP')
-          .fontSize(13)
+          .fontSize(11)
           .fontWeight(FontWeight.Bold)
           .fontColor('#3A220D')
       }
@@ -217,22 +234,17 @@ export struct ProfilePage {
         colors: [['#FFF2BC', 0], ['#D9A64C', 1]] as [string, number][]
       })
 
-      Column({ space: 4 }) {
-        Text('AgentClaw 会员')
-          .fontSize(16)
-          .fontFamily('MiSans-DemiBold')
-          .fontWeight(FontWeight.Bold)
-          .fontColor('#FFF1C2')
-        Text('解锁 AI 图文、视频等高级能力')
-          .fontSize(12)
-          .fontFamily('MiSans-Normal')
-          .fontColor('#CDAF7A')
-      }
-      .alignItems(HorizontalAlign.Start)
+      Text('解锁 AI 图文视频高级能力')
+        .fontSize(12)
+        .fontFamily('MiSans')
+        .fontWeight(FontWeight.Medium)
+        .fontColor('#FFF1C2')
+        .maxLines(1)
+        .textOverflow({ overflow: TextOverflow.Ellipsis })
       .layoutWeight(1)
 
       Text('开通')
-        .fontSize(13)
+        .fontSize(11)
         .fontWeight(FontWeight.Bold)
         .fontColor('#3A220D')
         .textAlign(TextAlign.Center)
@@ -415,6 +427,17 @@ export struct ProfilePage {
 
       Column({ space: 14 }) {
         Row() {
+          Row() {
+            Image($rawfile('icons/ic_back.svg')).width(22).height(22)
+          }
+          .width(40)
+          .height(40)
+          .justifyContent(FlexAlign.Center)
+          .margin({ left: -10, right: 4 })
+          .onClick(() => {
+            this.closeDeleteAccountDialog();
+          })
+
           Column({ space: 6 }) {
             Text('注销账号')
               .fontSize(22)
@@ -426,13 +449,6 @@ export struct ProfilePage {
           }
           .alignItems(HorizontalAlign.Start)
           .layoutWeight(1)
-
-          Text('✕')
-            .fontSize(15)
-            .fontColor(Color.Black)
-            .onClick(() => {
-              this.closeDeleteAccountDialog();
-            })
         }
         .width('100%')
 

@@ -6,6 +6,7 @@ import { AppPreferences } from '../storage/AppPreferences';
 import { OnboardingPage } from '../components/onboarding/OnboardingPage';
 import { ShellPage } from '../components/shell/ShellPage';
 import { SystemBarStyle } from '../common/SystemBarStyle';
+import { AppBackNavigator } from '../common/AppBackNavigator';
 
 const SPLASH_TIMEOUT_FALLBACK_MS = 8000;
 
@@ -21,6 +22,10 @@ struct Index {
     if (this.onboardingCompleted) {
       this.initializeSdksAndProceed();
     }
+  }
+
+  onBackPress(): boolean {
+    return AppBackNavigator.handleBack();
   }
 
   build() {
@@ -61,7 +66,7 @@ struct Index {
     import('../ad/GroMoreSplashAdManager').then((splashModule) => {
       if (!splashModule.GroMoreSplashAdManager.shared.shouldRequestSplashThisSession) {
         this.isWaitingForSplashAd = false;
-        SystemBarStyle.applyProfileStatusBar(false);
+        SystemBarStyle.applyTabStatusBar();
         return;
       }
       this.isWaitingForSplashAd = true;
@@ -69,7 +74,7 @@ struct Index {
     }).catch((error: Error) => {
       console.warn(`[Index] 广告模块加载失败 ${error.message}`);
       this.isWaitingForSplashAd = false;
-      SystemBarStyle.applyProfileStatusBar(false);
+      SystemBarStyle.applyTabStatusBar();
     }).finally(() => {
       this.isInitializingSdks = false;
     });
@@ -86,7 +91,7 @@ struct Index {
   private requestSplashAdIfNeeded(): void {
     if (!AppPreferences.shared.onboardingCompleted || this.didRequestSplashAd) {
       this.isWaitingForSplashAd = false;
-      SystemBarStyle.applyProfileStatusBar(false);
+      SystemBarStyle.applyTabStatusBar();
       return;
     }
     this.didRequestSplashAd = true;
@@ -95,7 +100,7 @@ struct Index {
     setTimeout(() => {
       if (this.isWaitingForSplashAd) {
         this.isWaitingForSplashAd = false;
-        SystemBarStyle.applyProfileStatusBar(false);
+        SystemBarStyle.applyTabStatusBar();
       }
     }, SPLASH_TIMEOUT_FALLBACK_MS);
 
@@ -103,24 +108,24 @@ struct Index {
       adModule.GroMoreAdManager.shared.initialize((success: boolean) => {
         if (!success) {
           this.isWaitingForSplashAd = false;
-          SystemBarStyle.applyProfileStatusBar(false);
+          SystemBarStyle.applyTabStatusBar();
           return;
         }
         import('../ad/GroMoreSplashAdManager').then((splashModule) => {
           splashModule.GroMoreSplashAdManager.shared.loadAndShowDefaultSplashAd(() => {
             this.isWaitingForSplashAd = false;
-            SystemBarStyle.applyProfileStatusBar(false);
+            SystemBarStyle.applyTabStatusBar();
           });
         }).catch((error: Error) => {
           console.warn(`[Index] 开屏广告模块加载失败 ${error.message}`);
           this.isWaitingForSplashAd = false;
-          SystemBarStyle.applyProfileStatusBar(false);
+          SystemBarStyle.applyTabStatusBar();
         });
       });
     }).catch((error: Error) => {
       console.warn(`[Index] 广告 SDK 模块加载失败 ${error.message}`);
       this.isWaitingForSplashAd = false;
-      SystemBarStyle.applyProfileStatusBar(false);
+      SystemBarStyle.applyTabStatusBar();
     });
   }
 }

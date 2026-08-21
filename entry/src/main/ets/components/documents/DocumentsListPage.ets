@@ -11,15 +11,38 @@ import { ChatStore } from '../../store/ChatStore';
 import { GeneratedDocumentStore } from '../../store/GeneratedDocumentStore';
 import { GeneratedDocument } from '../../model/ChatModels';
 import { DocumentPreviewOverlay } from './DocumentPreviewPage';
+import { AppBackNavigator } from '../../common/AppBackNavigator';
 
 @Component
 export struct DocumentsListPage {
+  private readonly backHandlerId: string = AppBackNavigator.createHandlerId('documents');
   store: ChatStore = new ChatStore();
   onClose: () => void = () => {
   };
   onOpenVideo: (url: string, coverURL: string) => void = () => {};
   @State private previewDocument: GeneratedDocument | null = null;
   @State private previewImage: GeneratedDocument | null = null;
+
+  aboutToAppear(): void {
+    AppBackNavigator.register(this.backHandlerId, (): boolean => this.handleBack());
+  }
+
+  aboutToDisappear(): void {
+    AppBackNavigator.unregister(this.backHandlerId);
+  }
+
+  private handleBack(): boolean {
+    if (this.previewImage !== null) {
+      this.previewImage = null;
+      return true;
+    }
+    if (this.previewDocument !== null) {
+      this.previewDocument = null;
+      return true;
+    }
+    this.onClose();
+    return true;
+  }
 
   private getDocuments(): GeneratedDocument[] {
     return [...this.store.allDocuments].sort((a, b) => b.createdAt - a.createdAt);
@@ -35,6 +58,14 @@ export struct DocumentsListPage {
 
       Column() {
         Row() {
+          Row() {
+            Image($rawfile('icons/ic_back.svg')).width(22).height(22)
+          }
+          .width(44)
+          .height(44)
+          .justifyContent(FlexAlign.Center)
+          .onClick(this.onClose)
+
           Column({ space: 4 }) {
             Row({ space: 8 }) {
               Text(Icons.folder).fontSize(16)
@@ -45,10 +76,9 @@ export struct DocumentsListPage {
           .alignItems(HorizontalAlign.Start)
 
           Blank().layoutWeight(1)
-          Text(Icons.close).fontSize(13).fontWeight(FontWeight.Bold).onClick(this.onClose)
         }
         .width('100%')
-        .padding({ left: 20, right: 20, top: 16, bottom: 16 })
+        .padding({ left: 8, right: 20, top: 12, bottom: 12 })
 
         Divider().color(AgentClawDesign.divider)
 
@@ -148,6 +178,16 @@ export struct DocumentsListPage {
     Stack() {
       Column() {
         Row() {
+          Row() {
+            Image($rawfile('icons/ic_back.svg')).width(21).height(21)
+          }
+          .width(40)
+          .height(44)
+          .justifyContent(FlexAlign.Center)
+          .onClick(() => {
+            this.previewImage = null;
+          })
+
           Text(document.displayName)
             .fontSize(14)
             .fontWeight(FontWeight.Bold)
@@ -155,15 +195,10 @@ export struct DocumentsListPage {
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .layoutWeight(1)
-          Text(Icons.close)
-            .fontSize(16)
-            .onClick(() => {
-              this.previewImage = null;
-            })
         }
         .width('100%')
         .height(44)
-        .padding({ left: 14, right: 14 })
+        .padding({ left: 2, right: 14 })
         .backgroundColor(AgentClawDesign.controlSurface)
 
         Image(fileUri.getUriFromPath(GeneratedDocumentStore.shared.fileURL(document)))

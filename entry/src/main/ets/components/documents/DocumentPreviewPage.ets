@@ -5,7 +5,6 @@
 import { webview } from '@kit.ArkWeb';
 import { fileIo } from '@kit.CoreFileKit';
 import { AgentClawDesign } from '../../common/Design';
-import { Icons } from '../../common/Icons';
 
 @Component
 export struct DocumentPreviewOverlay {
@@ -19,6 +18,14 @@ export struct DocumentPreviewOverlay {
     Stack() {
       Column() {
         Row() {
+          Row() {
+            Image($rawfile('icons/ic_back.svg')).width(21).height(21)
+          }
+          .width(40)
+          .height(44)
+          .justifyContent(FlexAlign.Center)
+          .onClick(this.onClose)
+
           Text(this.displayName)
             .fontSize(14)
             .fontWeight(FontWeight.Bold)
@@ -26,13 +33,10 @@ export struct DocumentPreviewOverlay {
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
             .layoutWeight(1)
-          Text(Icons.close)
-            .fontSize(16)
-            .onClick(this.onClose)
         }
         .width('100%')
         .height(44)
-        .padding({ left: 14, right: 14 })
+        .padding({ left: 2, right: 14 })
         .backgroundColor(AgentClawDesign.controlSurface)
 
         Web({ src: '', controller: this.controller })
