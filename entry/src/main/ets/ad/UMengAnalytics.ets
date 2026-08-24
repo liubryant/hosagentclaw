@@ -2,8 +2,9 @@
  * @author liuzheng
  * @mail bryant_liu24@126.com
  */
-import { init, agree, setLogEnabled, trackEvent } from '@umeng/analytics';
+import { init, agree, setLogEnabled, trackEvent, InternalPlugin, preInit } from '@umeng/analytics';
 import { AppPreferences } from '../storage/AppPreferences';
+import { WindowStageHolder } from '../common/WindowStageHolder';
 
 export class UMengAnalytics {
   private static instance: UMengAnalytics | null = null;
@@ -29,7 +30,17 @@ export class UMengAnalytics {
 
     this.isInitializing = true;
     try {
-      // 调用方只会在用户同意隐私政策后调用 initialize()。
+      const abilityContext = WindowStageHolder.abilityContext;
+      if (abilityContext === null) {
+        console.warn('[UMengAnalytics] abilityContext 尚未就绪，跳过初始化');
+        return;
+      }
+
+      // preInit 也属于 SDK 初始化流程，必须放在隐私同意之后执行。
+      preInit({
+        context: abilityContext.getApplicationContext(),
+        plugins: [new InternalPlugin()]
+      });
       agree();
       setLogEnabled(false);
       await init();

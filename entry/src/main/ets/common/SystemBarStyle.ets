@@ -31,6 +31,7 @@ export class SystemBarStyle {
     // Splash ads are overlays. Changing fullscreen/status-bar visibility here
     // resizes the ArkUI viewport when the ad closes and makes the bottom bar
     // jump on the first home frame. Keep window geometry unchanged.
+    mainWindow.setWindowSystemBarEnable(['status', 'navigation']).catch(() => {});
     mainWindow.setWindowSystemBarProperties({
       statusBarColor: '#FFFFFF',
       statusBarContentColor: '#1A1A2E',
@@ -69,6 +70,9 @@ export class SystemBarStyle {
       return;
     }
     mainWindow.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.RESIZE);
+    // Tuanjie/广告组件可能在初始化或退出沉浸页时修改系统栏可见性。
+    // 首页不能只恢复颜色，必须显式重新显示状态栏，确保时间和系统图标可见。
+    mainWindow.setWindowSystemBarEnable(['status', 'navigation']).catch(() => {});
     mainWindow.setWindowSystemBarProperties({
       statusBarColor: '#FFFFFF',
       statusBarContentColor: '#1A1A2E',
@@ -120,6 +124,7 @@ export class SystemBarStyle {
     }
 
     mainWindow.getUIContext().setKeyboardAvoidMode(KeyboardAvoidMode.RESIZE);
+    mainWindow.setWindowSystemBarEnable(['status', 'navigation']).catch(() => {});
     mainWindow.setWindowSystemBarProperties({
       statusBarColor: '#FFFFFF',
       statusBarContentColor: '#1A1A2E',

@@ -7,11 +7,44 @@ import {
   SDKConfig,
   SDKConfigBuilder,
   MediationConfigBuilder,
-  CSJCustomPrivacyDefaultController
+  CSJCustomPrivacyController
 } from '@csj/openadsdk';
 import { AdConfig } from '../common/AdConfig';
 import { WindowStageHolder } from '../common/WindowStageHolder';
 import { AppPreferences } from '../storage/AppPreferences';
+
+/**
+ * 穿山甲最小化隐私控制器。
+ *
+ * OAID、位置、Wi-Fi 状态和 MAC 地址均不是应用核心功能的必要信息，
+ * 因此即使用户同意隐私政策也不向广告 SDK 开放，避免 SDK 回退到默认
+ * 控制器后自行读取设备标识符。
+ */
+class MinimalCSJPrivacyController extends CSJCustomPrivacyController {
+  isCanUseAppTrackingConsent(): boolean {
+    return false;
+  }
+
+  getDevOaid(): string | undefined {
+    return undefined;
+  }
+
+  isCanUseLocation(): boolean {
+    return false;
+  }
+
+  getTTLocation(): number[] | undefined {
+    return undefined;
+  }
+
+  isCanUseWifiState(): boolean {
+    return false;
+  }
+
+  getMacAddress(): string | undefined {
+    return undefined;
+  }
+}
 
 export class GroMoreAdManager {
   private static instance: GroMoreAdManager | null = null;
@@ -59,7 +92,7 @@ export class GroMoreAdManager {
       .appId(AdConfig.groMoreAppId)
       .appName('hosAgentclaw')
       .debug(false)
-      .customController(new CSJCustomPrivacyDefaultController())
+      .customController(new MinimalCSJPrivacyController())
       .setMediationConfig(new MediationConfigBuilder().useMediation(true).build())
       .setThemeStatus(0)
       .build();
@@ -67,9 +100,7 @@ export class GroMoreAdManager {
     CSJAdSdk.init(context, config);
     CSJAdSdk.start().then((result) => {
       const success = result !== undefined && (result.code === 0 || result.code === 4200);
-      if (success) {
-        CSJAdSdk.requestPermissionIfNeed(context);
-      } else {
+      if (!success) {
         console.warn(`[GroMoreAdManager] SDK start 未就绪 code=${result?.code} msg=${result?.msg}`);
       }
       this.finishPending(success);

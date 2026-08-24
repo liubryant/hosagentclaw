@@ -5,7 +5,6 @@
 import { common } from '@kit.AbilityKit';
 import { AgentClawDesign } from '../../common/Design';
 import { AppPreferences } from '../../storage/AppPreferences';
-import { AlipayManager } from '../../pay/AlipayManager';
 import { PaymentApi } from '../../pay/PaymentApi';
 import { MembershipInfo, VipOrderData, VipProduct } from '../../pay/VipProduct';
 import { QuotaManager } from '../../quota/QuotaManager';
@@ -926,7 +925,9 @@ export struct VipMembershipPage {
           return;
         }
         const context = getContext(this) as common.UIAbilityContext;
-        AlipayManager.pay(context, data)
+        // 支付宝 SDK 仅在用户主动发起支付时动态加载，不能随 Shell/VIP 页面提前初始化。
+        import('../../pay/AlipayManager').then((alipayModule) =>
+          alipayModule.AlipayManager.pay(context, data))
           .then((result) => {
             if (!result.launched) {
               this.isPaying = false;

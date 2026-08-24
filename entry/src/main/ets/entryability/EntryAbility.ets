@@ -10,45 +10,42 @@ import { EnvironmentManager } from '../common/AppConfig';
 import { GeneratedDocumentStore } from '../store/GeneratedDocumentStore';
 import { WindowStageHolder } from '../common/WindowStageHolder';
 import { SHORTCUT_LAUNCH_EVENT, ShortcutLaunchStore } from '../common/ShortcutLaunchStore';
-import { SetToGlobalThis, TuanjiePlayer } from 'tuanjieLib';
+import { PRIVACY_CONSENT_GRANTED_EVENT } from '../common/PrivacyConsent';
 
 const DOMAIN = 0x0000;
 
 export default class EntryAbility extends UIAbility {
-  private readonly tuanjiePlayer: TuanjiePlayer = TuanjiePlayer.getInstance();
+  private latestWant: Want | null = null;
+  private latestLaunchParam: AbilityConstant.LaunchParam | null = null;
+  private currentWindowStage: window.WindowStage | null = null;
+  private firstPartyServicesInitialized: boolean = false;
+  private abilityIsForeground: boolean = false;
+  private readonly privacyConsentListener = (): void => {
+    this.initializePostConsentServices();
+  };
 
   onCreate(want: Want, launchParam: AbilityConstant.LaunchParam): void {
     hilog.info(DOMAIN, 'tuanjiehub', 'ability onCreate begin');
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onCreate');
     AppPreferences.shared.init(this.context);
-    EnvironmentManager.shared.init(this.context);
-    GeneratedDocumentStore.shared.init(this.context);
     WindowStageHolder.abilityContext = this.context;
+    this.latestWant = want;
+    this.latestLaunchParam = launchParam;
+    this.context.eventHub.on(PRIVACY_CONSENT_GRANTED_EVENT, this.privacyConsentListener);
     ShortcutLaunchStore.capture(want);
-    SetToGlobalThis('showStaticSplash', $r('app.integer.ShowStaticSplashScreen'));
-    SetToGlobalThis('staticSplashScreenFit', $r('app.integer.StaticSplashScreenFit'));
-    SetToGlobalThis('appSplash', $r('app.media.start_window_icon_rounded'));
-    // Required by Tuanjie's exported Ability template. The engine invokes this
-    // global callback from TuanjiePlayer.onCreate even when launch acceleration
-    // is disabled in boot.config.
-    SetToGlobalThis('isLaunchSnapshotEnabled', (): boolean => false);
-    hilog.info(DOMAIN, 'tuanjiehub', 'launch snapshot callback registered');
-    // Tuanjie 1.9.3 calls the optional launch-acceleration API even when the
-    // current HarmonyOS image does not expose it. Keep the already-created
-    // player/worker alive, but do not let that optional API abort app startup.
-    try {
-      this.tuanjiePlayer.onCreate(this.context, want, launchParam);
-      hilog.info(DOMAIN, 'tuanjiehub', 'player onCreate complete');
-    } catch (error) {
-      const playerError = error as Error;
-      hilog.warn(DOMAIN, 'tuanjiehub',
-        'player onCreate failed value=%{public}s message=%{public}s stack=%{public}s',
-        `${error}`, playerError.message ?? '', playerError.stack ?? '');
+    if (AppPreferences.shared.onboardingCompleted) {
+      this.initializePostConsentServices();
     }
   }
 
   onNewWant(want: Want, launchParam: AbilityConstant.LaunchParam): void {
-    this.tuanjiePlayer.onNewWant(want, launchParam);
+    this.latestWant = want;
+    this.latestLaunchParam = launchParam;
+    if (AppPreferences.shared.onboardingCompleted) {
+      import('../common/TuanjieLifecycleManager').then((managerModule) => {
+        managerModule.TuanjieLifecycleManager.shared.onNewWant(want, launchParam);
+      }).catch((): void => {});
+    }
     const action = ShortcutLaunchStore.capture(want);
     if (action.length > 0) {
       this.context.eventHub.emit(SHORTCUT_LAUNCH_EVENT, action);
@@ -57,23 +54,23 @@ export default class EntryAbility extends UIAbility {
 
   onDestroy(): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onDestroy');
-    this.tuanjiePlayer.onDestroy();
+    this.context.eventHub.off(PRIVACY_CONSENT_GRANTED_EVENT, this.privacyConsentListener);
+    if (AppPreferences.shared.onboardingCompleted) {
+      import('../common/TuanjieLifecycleManager').then((managerModule) => {
+        managerModule.TuanjieLifecycleManager.shared.onDestroy();
+      }).catch((): void => {});
+    }
   }
 
   onWindowStageCreate(windowStage: window.WindowStage): void {
     hilog.info(DOMAIN, 'tuanjiehub', 'ability windowStageCreate begin');
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageCreate');
     WindowStageHolder.windowStage = windowStage;
+    this.currentWindowStage = windowStage;
 
     font.registerFont({ familyName: 'MiSans', familySrc: $rawfile('fonts/misans_medium.ttf') });
     font.registerFont({ familyName: 'MiSans-DemiBold', familySrc: $rawfile('fonts/misans_demibold.ttf') });
     font.registerFont({ familyName: 'MiSans-Normal', familySrc: $rawfile('fonts/misans_normal.ttf') });
-
-    // Let Tuanjie finish its window setup before ArkUI becomes visible. The
-    // previous order loaded Index first, so Tuanjie and ShellPage raced to
-    // change fullscreen/system-bar state after the first frame was onscreen.
-    this.tuanjiePlayer.onWindowStageCreate(windowStage);
-    hilog.info(DOMAIN, 'tuanjiehub', 'player windowStageCreate complete');
 
     const mainWindow = windowStage.getMainWindowSync();
     Promise.all([
@@ -92,10 +89,10 @@ export default class EntryAbility extends UIAbility {
       })
     ]).then((): void => {
       this.publishSafeInsets(mainWindow);
-      this.loadMainContent(windowStage);
+      this.loadInitialContent(windowStage);
     }).catch((): void => {
       this.publishSafeInsets(mainWindow);
-      this.loadMainContent(windowStage);
+      this.loadInitialContent(windowStage);
     });
   }
 
@@ -125,8 +122,19 @@ export default class EntryAbility extends UIAbility {
       topInsetVp, bottomInsetVp);
   }
 
-  private loadMainContent(windowStage: window.WindowStage): void {
-    windowStage.loadContent('pages/Index', (err) => {
+  private loadInitialContent(windowStage: window.WindowStage): void {
+    if (!AppPreferences.shared.onboardingCompleted) {
+      this.loadContent(windowStage, 'pages/Index');
+      return;
+    }
+    // 已同意用户先完成 Tuanjie 的窗口生命周期，再展示主页面，避免状态栏二次跳动。
+    this.initializePostConsentServices().finally((): void => {
+      this.loadContent(windowStage, 'pages/MainPage');
+    });
+  }
+
+  private loadContent(windowStage: window.WindowStage, page: string): void {
+    windowStage.loadContent(page, (err) => {
       if (err.code) {
         hilog.error(DOMAIN, 'testTag', 'Failed to load the content. Cause: %{public}s', JSON.stringify(err));
         return;
@@ -135,23 +143,65 @@ export default class EntryAbility extends UIAbility {
     });
   }
 
+  private initializePostConsentServices(): Promise<void> {
+    if (!AppPreferences.shared.onboardingCompleted) {
+      return Promise.resolve();
+    }
+    if (!this.firstPartyServicesInitialized) {
+      this.firstPartyServicesInitialized = true;
+      EnvironmentManager.shared.init(this.context);
+      GeneratedDocumentStore.shared.init(this.context);
+    }
+    const want = this.latestWant;
+    const launchParam = this.latestLaunchParam;
+    if (want === null || launchParam === null) {
+      return Promise.resolve();
+    }
+    return import('../common/TuanjieLifecycleManager').then((managerModule) => {
+      managerModule.TuanjieLifecycleManager.shared.initialize(
+        this.context, want, launchParam, this.currentWindowStage, this.abilityIsForeground);
+    }).catch((error: Error) => {
+      hilog.warn(DOMAIN, 'tuanjiehub', 'post-consent module load failed %{public}s', error.message);
+    });
+  }
+
   onWindowStageWillDestroy(): void {
-    this.tuanjiePlayer.onWindowStageWillDestroy();
+    if (AppPreferences.shared.onboardingCompleted) {
+      import('../common/TuanjieLifecycleManager').then((managerModule) => {
+        managerModule.TuanjieLifecycleManager.shared.onWindowStageWillDestroy();
+      }).catch((): void => {});
+    }
   }
 
   onWindowStageDestroy(): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onWindowStageDestroy');
-    this.tuanjiePlayer.onWindowStageDestroy();
+    this.currentWindowStage = null;
+    WindowStageHolder.windowStage = null;
+    if (AppPreferences.shared.onboardingCompleted) {
+      import('../common/TuanjieLifecycleManager').then((managerModule) => {
+        managerModule.TuanjieLifecycleManager.shared.onWindowStageDestroy();
+      }).catch((): void => {});
+    }
   }
 
   onForeground(): void {
     hilog.info(DOMAIN, 'tuanjiehub', 'player foreground');
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onForeground');
-    this.tuanjiePlayer.onForeground();
+    this.abilityIsForeground = true;
+    if (AppPreferences.shared.onboardingCompleted) {
+      import('../common/TuanjieLifecycleManager').then((managerModule) => {
+        managerModule.TuanjieLifecycleManager.shared.onForeground();
+      }).catch((): void => {});
+    }
   }
 
   onBackground(): void {
     hilog.info(DOMAIN, 'testTag', '%{public}s', 'Ability onBackground');
-    this.tuanjiePlayer.onBackground();
+    this.abilityIsForeground = false;
+    if (AppPreferences.shared.onboardingCompleted) {
+      import('../common/TuanjieLifecycleManager').then((managerModule) => {
+        managerModule.TuanjieLifecycleManager.shared.onBackground();
+      }).catch((): void => {});
+    }
   }
 }

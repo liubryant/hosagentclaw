@@ -8,12 +8,16 @@ import { AppConfig } from '../common/AppConfig';
 import { ChatHistorySnapshot, ChatMessage, ChatEntryMode, LocalChatSession } from '../model/ChatModels';
 
 const PREFS_NAME = 'agent_claw_prefs';
+// Version 2 invalidates every consent recorded by builds that could initialize
+// device/advertising SDKs before the privacy gate was fully isolated.
+export const CURRENT_PRIVACY_POLICY_VERSION: number = 2;
 
 class Key {
   static readonly gatewayURL = 'gateway_url';
   static readonly gatewayToken = 'gateway_token';
   static readonly allowInsecureLocalNetwork = 'allow_insecure_local_network';
   static readonly onboardingCompleted = 'onboarding_completed';
+  static readonly privacyConsentVersion = 'privacy_consent_version';
   static readonly chatHistorySnapshot = 'chat_history_snapshot';
   static readonly isLoggedIn = 'is_logged_in';
   static readonly userPhone = 'user_phone';
@@ -93,12 +97,19 @@ export class AppPreferences {
   }
 
   get onboardingCompleted(): boolean {
-    return this.safeStore.getSync(Key.onboardingCompleted, false) as boolean;
+    // 隐私协议升级后必须重新征得同意。旧版本只有 onboarding_completed，
+    // 不再将它视为当前版本的有效授权，避免升级安装绕过新的隐私声明。
+    return this.privacyConsentVersion >= CURRENT_PRIVACY_POLICY_VERSION;
   }
 
   set onboardingCompleted(value: boolean) {
     this.safeStore.putSync(Key.onboardingCompleted, value);
+    this.safeStore.putSync(Key.privacyConsentVersion, value ? CURRENT_PRIVACY_POLICY_VERSION : 0);
     this.safeStore.flush();
+  }
+
+  get privacyConsentVersion(): number {
+    return this.safeStore.getSync(Key.privacyConsentVersion, 0) as number;
   }
 
   get isLoggedIn(): boolean {
