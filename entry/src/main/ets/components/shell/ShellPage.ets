@@ -571,14 +571,14 @@ export struct ShellPage {
               })
 
               Text('灵感泉涌')
-                .fontSize(16)
+                .fontSize(14)
                 .fontWeight(FontWeight.Bold)
                 .fontFamily('MiSans-DemiBold')
                 .fontColor(AgentClawDesign.primaryText)
                 .layoutWeight(1)
             }
             .width('100%')
-            .padding({ left: 4, right: 16, top: 12, bottom: 8 })
+            .padding({ left: 4, right: 16, top: 4, bottom: 4 })
 
             FancyIdeasPage({
               onUseIdea: (idea: FancyIdea) => {
@@ -590,7 +590,7 @@ export struct ShellPage {
               .layoutWeight(1)
           }
           .width('100%')
-          .height('80%')
+          .height('40%')
           .backgroundColor(Color.White)
           .borderRadius({ topLeft: 16, topRight: 16 })
           .alignSelf(ItemAlign.End)
@@ -763,17 +763,17 @@ export struct ShellPage {
         Stack({ alignContent: Alignment.Center }) {
           Stack({ alignContent: Alignment.Center }) {
             Image($rawfile('icons/lily_tab_thumbnail.png'))
-              .width(29)
-              .height(29)
+              .width(22)
+              .height(22)
               .objectFit(ImageFit.Cover)
           }
-          .width(29)
-          .height(29)
-          .borderRadius(15)
+          .width(22)
+          .height(22)
+          .borderRadius(11)
           .clip(true)
         }
-        .width(31)
-        .height(31)
+        .width(22)
+        .height(22)
       } else {
         Image(tab === 'creation' ? $rawfile('icons/ic_bottom_creation.svg') :
               tab === 'chat' ? $rawfile('icons/ic_bottom_conversation.svg') :
@@ -821,19 +821,19 @@ export struct ShellPage {
 
   @Builder
   private sidebar() {
-    Column({ space: 12 }) {
+    Column({ space: 9 }) {
       this.searchField()
 
-      Row({ space: 6 }) {
-        Text(Icons.newChat).fontSize(13).fontColor(AgentClawDesign.primaryText)
+      Row({ space: 4 }) {
+        Text(Icons.newChat).fontSize(11).fontColor(AgentClawDesign.primaryText)
         Text('新对话')
-          .fontSize(12)
+          .fontSize(11)
           .fontWeight(FontWeight.Bold)
           .fontFamily('MiSans-DemiBold')
           .fontColor(AgentClawDesign.primaryText)
         Blank().layoutWeight(1)
       }
-      .padding({ left: 14, right: 14 })
+      .padding({ left: 8, right: 8 })
       .height(38)
       .backgroundColor('rgba(255,255,255,0.72)')
       .borderRadius(8)
@@ -875,8 +875,8 @@ export struct ShellPage {
         })
       }
     }
-    .width('40%')
-    .padding({ left: 12, right: 10, top: 16, bottom: 16 })
+    .width('30%')
+    .padding({ left: 8, right: 6, top: 12, bottom: 12 })
     .height('100%')
     .backgroundColor(AgentClawDesign.sidebarBackground)
   }
@@ -980,10 +980,11 @@ export struct ShellPage {
 
   @Builder
   private searchField() {
-    Row({ space: 6 }) {
-      Text(Icons.search).fontSize(11)
+    Row({ space: 4 }) {
+      Text(Icons.search).fontSize(10)
       TextInput({ text: this.sidebarQuery, placeholder: '搜索历史' })
-        .fontSize(12)
+        .fontSize(11)
+        .placeholderFont({ size: 11 })
         .fontFamily('MiSans')
         .fontColor(AgentClawDesign.primaryText)
         .placeholderColor(AgentClawDesign.secondaryText)
@@ -1011,29 +1012,31 @@ export struct ShellPage {
 
   @Builder
   private sessionRow(session: LocalChatSession) {
-    Row({ space: 10 }) {
+    Row({ space: 4 }) {
       Text(Icons.message)
-        .fontSize(11)
+        .fontSize(10)
         .fontColor(session.id === this.store.selectedSessionID ? AgentClawDesign.accent : AgentClawDesign.secondaryText)
 
       Column({ space: 3 }) {
         Text(session.title)
-          .fontSize(11)
+          .fontSize(10)
           .fontFamily('MiSans')
           .fontWeight(session.id === this.store.selectedSessionID ? FontWeight.Bold : FontWeight.Normal)
           .fontColor(AgentClawDesign.primaryText)
           .maxLines(1)
           .textOverflow({ overflow: TextOverflow.Ellipsis })
         Text(this.formattedTime(session.updatedAt))
-          .fontSize(10)
+          .fontSize(9)
           .fontFamily('MiSans-Normal')
           .fontColor(AgentClawDesign.secondaryText)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       .alignItems(HorizontalAlign.Start)
       .layoutWeight(1)
 
       Text(Icons.trash)
-        .fontSize(11)
+        .fontSize(10)
         .fontColor(AgentClawDesign.secondaryText)
         .onClick(() => {
           this.confirmDelete(session);
@@ -1089,27 +1092,30 @@ export struct ShellPage {
 
   @Builder
   private sidebarNavItem(icon: string, title: string, subtitle: string, action: () => void) {
-    Row({ space: 10 }) {
-      Text(icon).fontSize(14).fontColor(Color.Black).width(20)
+    Row({ space: 4 }) {
+      Text(icon).fontSize(12).fontColor(Color.Black).width(14)
 
       Column({ space: 2 }) {
         Text(title)
-          .fontSize(12)
+          .fontSize(10)
           .fontFamily('MiSans')
           .fontWeight(FontWeight.Medium)
           .fontColor(AgentClawDesign.primaryText)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
         Text(subtitle)
-          .fontSize(11)
+          .fontSize(9)
           .fontFamily('MiSans-Normal')
           .fontColor(AgentClawDesign.secondaryText)
+          .maxLines(1)
+          .textOverflow({ overflow: TextOverflow.Ellipsis })
       }
       .alignItems(HorizontalAlign.Start)
-
-      Blank().layoutWeight(1)
+      .layoutWeight(1)
     }
     .width('100%')
     .height(40)
-    .padding({ left: 10, right: 10 })
+    .padding({ left: 6, right: 6 })
     .backgroundColor('rgba(255,255,255,0.44)')
     .borderRadius(8)
     .onClick(action)
@@ -1119,7 +1125,7 @@ export struct ShellPage {
   private sidebarVipItem(action: () => void) {
     Column({ space: 5 }) {
       Text('✦  VIP 会员')
-        .fontSize(13)
+        .fontSize(11)
         .fontFamily('MiSans-DemiBold')
         .fontWeight(FontWeight.Bold)
         .fontColor('#F5D69D')
@@ -1127,7 +1133,7 @@ export struct ShellPage {
         .textAlign(TextAlign.Center)
 
       Text('解锁满血 AI')
-        .fontSize(10)
+        .fontSize(9)
         .fontFamily('MiSans')
         .fontColor('#C9AA79')
         .width('100%')
@@ -1135,7 +1141,7 @@ export struct ShellPage {
     }
     .width('100%')
     .height(56)
-    .padding({ left: 12, right: 12 })
+    .padding({ left: 6, right: 6 })
     .justifyContent(FlexAlign.Center)
     .alignItems(HorizontalAlign.Center)
     .linearGradient({

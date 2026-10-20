@@ -13,20 +13,20 @@ export struct FancyIdeasPage {
 
   build() {
     Scroll() {
-      Column({ space: 14 }) {
+      Column({ space: 10 }) {
         Text('选择一个灵感，再带入对话细化')
-          .fontSize(14)
+          .fontSize(12)
           .fontWeight(FontWeight.Bold)
           .fontColor(AgentClawDesign.primaryText)
-          .margin({ top: 14 })
+          .margin({ top: 8 })
 
         ForEach(this.groups, (group: FancyIdeaGroup) => {
           Column({ space: 6 }) {
             Text(group.title)
-              .fontSize(12)
+              .fontSize(11)
               .fontWeight(FontWeight.Bold)
               .fontColor(AgentClawDesign.primaryText)
-              .margin({ top: 4, bottom: 6 })
+              .margin({ top: 2, bottom: 4 })
               .width('100%')
 
             this.ideaGrid(group.items)
@@ -37,7 +37,7 @@ export struct FancyIdeasPage {
       }
       .alignItems(HorizontalAlign.Start)
       .width('100%')
-      .padding({ left: 16, right: 16, bottom: 18 })
+      .padding({ left: 12, right: 12, bottom: 12 })
     }
     .backgroundColor(AgentClawDesign.controlSurface)
     .width('100%')
@@ -46,9 +46,9 @@ export struct FancyIdeasPage {
 
   @Builder
   private ideaGrid(items: FancyIdea[]) {
-    Column({ space: 10 }) {
+    Column({ space: 8 }) {
       ForEach(this.rows(items), (row: FancyIdea[]) => {
-        Row({ space: 10 }) {
+        Row({ space: 8 }) {
           ForEach(row, (idea: FancyIdea) => {
             this.ideaCard(idea)
           }, (idea: FancyIdea) => idea.id)
@@ -75,21 +75,21 @@ export struct FancyIdeasPage {
   private ideaCard(idea: FancyIdea) {
     Column({ space: 0 }) {
       Image(idea.imageName)
-        .width(48)
-        .height(40)
+        .width(36)
+        .height(30)
         .objectFit(ImageFit.Contain)
         .align(Alignment.TopStart)
 
       Text(idea.title)
-        .fontSize(12)
+        .fontSize(11)
         .fontWeight(FontWeight.Bold)
         .fontColor(AgentClawDesign.primaryText)
         .maxLines(1)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
-        .margin({ top: 14 })
+        .margin({ top: 8 })
 
       Text(idea.subtitle)
-        .fontSize(12)
+        .fontSize(10)
         .fontColor(AgentClawDesign.secondaryText)
         .maxLines(2)
         .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -97,8 +97,8 @@ export struct FancyIdeasPage {
     }
     .alignItems(HorizontalAlign.Start)
     .layoutWeight(1)
-    .constraintSize({ minHeight: 128 })
-    .padding(12)
+    .constraintSize({ minHeight: 104 })
+    .padding(9)
     .backgroundColor(Color.White)
     .borderRadius(8)
     .shadow({ radius: 8, color: 'rgba(0,0,0,0.08)', offsetX: 0, offsetY: 3 })

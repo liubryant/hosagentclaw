@@ -3,6 +3,7 @@
  * @mail bryant_liu24@126.com
  */
 import { common } from '@kit.AbilityKit';
+import { pasteboard } from '@kit.BasicServicesKit';
 import { inputMethod } from '@kit.IMEKit';
 import { fileUri } from '@kit.CoreFileKit';
 import { AgentClawDesign } from '../../common/Design';
@@ -15,6 +16,7 @@ import { AppPreferences } from '../../storage/AppPreferences';
 import { ChatEntryMode, ChatMessage, ChatRole, GeneratedDocument } from '../../model/ChatModels';
 import { DocumentPreviewOverlay } from '../documents/DocumentPreviewPage';
 import { TodayHotspotItem, TodayHotspotService } from '../../gateway/TodayHotspotService';
+import { AvatarSpeechService, AvatarSpeechStateListener } from '../avatar/AvatarSpeechService';
 
 interface QuickPrompt {
   title: string;
@@ -158,9 +160,22 @@ export struct ChatPanel {
   @State private hotspots: TodayHotspotItem[] = [];
   @State private isLoadingHotspots: boolean = false;
   @State private panelWidth: number = 360;
+  @State private copyMenuMessageId: string = '';
+  @State private copiedMessageId: string = '';
+  @State private isSpeaking: boolean = false;
+  private copyFeedbackTimer: number = -1;
+  private readonly speechStateListener: AvatarSpeechStateListener = (speaking: boolean): void => {
+    this.isSpeaking = speaking;
+  };
 
   aboutToAppear(): void {
     this.loadHotspots();
+    AvatarSpeechService.shared.addStateListener(this.speechStateListener);
+  }
+
+  aboutToDisappear(): void {
+    this.clearCopyFeedbackTimer();
+    AvatarSpeechService.shared.removeStateListener(this.speechStateListener);
   }
 
   private loadHotspots(): void {
@@ -376,13 +391,77 @@ export struct ChatPanel {
 
         if (this.bubbleText(message).length > 0 ||
           (this.bubbleImageURL(message) === null && this.bubbleVideoURL(message) === null)) {
-          Text(this.bubbleText(message).length === 0 ? '...' : this.bubbleText(message))
-            .fontSize(13)
-            .fontFamily('MiSans')
-            .fontColor(AgentClawDesign.primaryText)
-            .padding({ left: 11, right: 11, top: 8, bottom: 8 })
-            .backgroundColor(message.role === ChatRole.USER ? '#E0EDFF' : AgentClawDesign.controlSurface)
-            .borderRadius(8)
+          Column({ space: 0 }) {
+            Text(this.copyableText(message))
+              .fontSize(12)
+              .fontFamily('MiSans')
+              .fontColor('#374151')
+              .padding({
+                left: 11,
+                right: 11,
+                top: 8,
+                bottom: this.isCopyActionVisible(message) ? 6 : 8
+              })
+
+            if (this.isCopyActionVisible(message)) {
+              Row({ space: 8 }) {
+                Row({ space: 5 }) {
+                  Image($rawfile('icons/ic_message_read.svg'))
+                    .width(17)
+                    .height(17)
+                    .opacity(this.isSpeaking ? 0.45 : 1)
+                  Text('朗读')
+                    .fontSize(14)
+                    .fontFamily('MiSans')
+                    .fontColor(this.isSpeaking ? '#A8ADB7' : '#303641')
+                }
+                .height(34)
+                .padding({ left: 11, right: 11 })
+                .backgroundColor('#FDFDFE')
+                .borderRadius(17)
+                .border({ width: 1, color: '#DDE1E8' })
+                .onClick((): void => {
+                  this.readMessage(message);
+                })
+
+                Row({ space: 5 }) {
+                  if (this.copiedMessageId === message.id) {
+                    Text('✓')
+                      .fontSize(16)
+                      .fontWeight(FontWeight.Bold)
+                      .fontColor('#6758D9')
+                  } else {
+                    Image($rawfile('icons/ic_message_copy.svg'))
+                      .width(17)
+                      .height(17)
+                  }
+                  Text(this.copiedMessageId === message.id ? '已复制' : '复制')
+                    .fontSize(14)
+                    .fontFamily('MiSans')
+                    .fontColor('#303641')
+                }
+                .height(34)
+                .padding({ left: 11, right: 11 })
+                .backgroundColor('#FDFDFE')
+                .borderRadius(17)
+                .border({ width: 1, color: '#DDE1E8' })
+                .onClick((): void => {
+                  this.copyMessage(message);
+                })
+              }
+              .width('100%')
+              .justifyContent(FlexAlign.Start)
+              .padding({ left: 11, right: 11, top: 5, bottom: 8 })
+            }
+          }
+          .alignItems(message.role === ChatRole.USER ? HorizontalAlign.End : HorizontalAlign.Start)
+          .backgroundColor(message.role === ChatRole.USER ? '#E0EDFF' : AgentClawDesign.controlSurface)
+          .borderRadius(8)
+          .gesture(LongPressGesture({ repeat: false, duration: 500 }).onAction((): void => {
+            this.clearCopyFeedbackTimer();
+            this.copiedMessageId = '';
+            this.copyMenuMessageId = message.id;
+          }))
         }
 
         if (this.bubbleImageURL(message) !== null) {
@@ -443,6 +522,60 @@ export struct ChatPanel {
     const imageURL = this.bubbleImageURL(message);
     const videoURL = this.bubbleVideoURL(message);
     return imageURL === null && videoURL === null ? message.content : ChatMediaParser.stripMedia(message.content);
+  }
+
+  private copyableText(message: ChatMessage): string {
+    const content = this.bubbleText(message);
+    return content.length > 0 ? content : '...';
+  }
+
+  private isCopyActionVisible(message: ChatMessage): boolean {
+    return this.copyMenuMessageId === message.id || this.copiedMessageId === message.id;
+  }
+
+  private copyMessage(message: ChatMessage): void {
+    const data = pasteboard.createData(pasteboard.MIMETYPE_TEXT_PLAIN, this.copyableText(message));
+    pasteboard.getSystemPasteboard().setData(data);
+    this.clearCopyFeedbackTimer();
+    this.copyMenuMessageId = '';
+    this.copiedMessageId = message.id;
+    this.copyFeedbackTimer = setTimeout((): void => {
+      if (this.copiedMessageId === message.id) {
+        this.copiedMessageId = '';
+      }
+      this.copyFeedbackTimer = -1;
+    }, 900) as number;
+  }
+
+  private readMessage(message: ChatMessage): void {
+    const content = this.copyableText(message).trim();
+    if (this.isSpeaking || content.length === 0) {
+      return;
+    }
+    this.copyMenuMessageId = '';
+    this.isSpeaking = true;
+    AvatarSpeechService.shared.speak(content, {
+      onStart: (): void => {
+        this.isSpeaking = true;
+      },
+      onComplete: (): void => {
+        this.isSpeaking = false;
+      },
+      onError: (message: string): void => {
+        this.isSpeaking = false;
+        this.store.errorMessage = `语音播报失败：${message}`;
+      }
+    }).catch((error: Error): void => {
+      this.isSpeaking = false;
+      this.store.errorMessage = `语音播报暂不可用：${error.message}`;
+    });
+  }
+
+  private clearCopyFeedbackTimer(): void {
+    if (this.copyFeedbackTimer >= 0) {
+      clearTimeout(this.copyFeedbackTimer);
+      this.copyFeedbackTimer = -1;
+    }
   }
 
   @Builder
@@ -681,6 +814,7 @@ export struct ChatPanel {
             .fontFamily('MiSans')
             .fontColor(AgentClawDesign.primaryText)
             .placeholderColor('rgba(0,0,0,0.34)')
+            .placeholderFont({ size: this.composerPlaceholderSize(), family: 'MiSans' })
             .backgroundColor(Color.Transparent)
             .enterKeyType(EnterKeyType.Send)
             .constraintSize({ minHeight: 58, maxHeight: 120 })
@@ -771,6 +905,10 @@ export struct ChatPanel {
       return '输入描述你想要的视频';
     }
     return '描述任务或提问任何问题';
+  }
+
+  private composerPlaceholderSize(): number {
+    return this.store.selectedEntryMode === ChatEntryMode.DEFAULT ? 13 : 15;
   }
 
   private canSend(): boolean {

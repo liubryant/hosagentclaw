@@ -9,9 +9,6 @@ import { LoginDialog } from '../account/LoginDialog';
 import { AuthService } from '../../gateway/AuthService';
 import { AppBackNavigator } from '../../common/AppBackNavigator';
 
-const AGREEMENT_URL = 'https://www.cjym123.cn/agreement_agentclaw.html';
-const PRIVACY_URL = 'https://www.cjym123.cn/privacy_agentclaw.html';
-const FEEDBACK_URL = 'https://www.cjym123.cn/feedback_agentclaw.html';
 const CODE_COUNTDOWN_SECONDS = 120;
 
 function isValidLoginCode(code: string): boolean {
@@ -94,21 +91,21 @@ export struct ProfilePage {
             .fontSize(27)
             .fontWeight(FontWeight.Bold)
             .fontFamily('MiSans-DemiBold')
-            .fontColor('#15151A')
+            .fontColor('#505058')
             .alignSelf(ItemAlign.Start)
-            .margin({ top: 0 })
+            .margin({ top: 12 })
 
           // Login card
           this.loginCard()
 
           this.vipCard()
 
-          // 功能 section
-          Text('功能')
+          // 常用服务 section
+          Text('常用服务')
             .fontSize(17)
             .fontFamily('MiSans-DemiBold')
             .fontWeight(FontWeight.Bold)
-            .fontColor('#202027')
+            .fontColor('#505058')
             .alignSelf(ItemAlign.Start)
 
           // Services card
@@ -121,34 +118,6 @@ export struct ProfilePage {
               .margin({ left: 54 })
             this.rowItem('⚙', '设置', () => {
               this.onOpenSettings();
-            })
-          }
-          .width('100%')
-          .backgroundColor('#F8F8FA')
-          .borderRadius(20)
-          .border({ width: 1, color: 'rgba(0,0,0,0.05)' })
-          .clip(true)
-
-          // 关于 section
-          Text('关于')
-            .fontSize(17)
-            .fontFamily('MiSans-DemiBold')
-            .fontWeight(FontWeight.Bold)
-            .fontColor('#202027')
-            .alignSelf(ItemAlign.Start)
-
-          // About card
-          Column({ space: 0 }) {
-            this.rowItem('📋', '用户协议', () => {
-              this.openLink(AGREEMENT_URL, '用户协议');
-            })
-            Divider().color(AgentClawDesign.divider).margin({ left: 54 })
-            this.rowItem('🔒', '隐私政策', () => {
-              this.openLink(PRIVACY_URL, '隐私政策');
-            })
-            Divider().color(AgentClawDesign.divider).margin({ left: 54 })
-            this.rowItem('💬', '客服反馈', () => {
-              this.openLink(FEEDBACK_URL, '客服反馈');
             })
           }
           .width('100%')
@@ -171,26 +140,32 @@ export struct ProfilePage {
             .clip(true)
           }
 
-          // Version text
-          Text(`版本 ${this.currentVersionName}`)
-            .fontSize(11)
+          Text('注销账号')
+            .fontSize(14)
+            .fontFamily('MiSans')
+            .fontColor('#E5484D')
+            .textAlign(TextAlign.Center)
+            .width('100%')
+            .height(52)
+            .padding({ left: 16, right: 16 })
+            .backgroundColor('#F8F8FA')
+            .borderRadius(20)
+            .border({ width: 1, color: 'rgba(0,0,0,0.05)' })
+            .margin({ top: 4 })
+            .onClick(() => {
+              this.openDeleteAccountDialog();
+            })
+
+          Text() {
+            Span($r('app.string.app_name'))
+            Span(` 版本 ${this.currentVersionName}`)
+          }
+            .fontSize(12)
             .fontFamily('MiSans-Normal')
             .fontColor('#A0A0AA')
             .textAlign(TextAlign.Center)
             .width('100%')
             .margin({ top: 8 })
-
-          Text('注销账号')
-            .fontSize(12)
-            .fontFamily('MiSans')
-            .fontColor('#E5484D')
-            .textAlign(TextAlign.Center)
-            .width('100%')
-            .height(36)
-            .margin({ top: 4 })
-            .onClick(() => {
-              this.openDeleteAccountDialog();
-            })
         }
         .width('100%')
         .padding({ left: 20, right: 20, top: 8, bottom: 28 })
@@ -222,28 +197,30 @@ export struct ProfilePage {
 
   @Builder
   private vipCard() {
-    Column({ space: 12 }) {
-      Row({ space: 11 }) {
+    Column({ space: 6 }) {
+      Row({ space: 8 }) {
         Text('✦')
           .fontFamily('MiSans')
-          .fontSize(18)
+          .fontSize(15)
           .fontWeight(FontWeight.Bold)
           .fontColor('#4B2A12')
-          .width(38)
-          .height(38)
+          .width(30)
+          .height(30)
           .textAlign(TextAlign.Center)
           .backgroundColor('#F4CF8A')
-          .borderRadius(19)
+          .borderRadius(15)
 
-        Column({ space: 4 }) {
+        Column({ space: 6 }) {
           Text(this.isVip ? 'Agent智能体会员' : '开通Agent智能体会员')
             .fontFamily('MiSans')
-            .fontSize(15)
+            .fontSize(14)
             .fontWeight(FontWeight.Bold)
             .fontColor('#FFF2D2')
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
           Text(this.isVip ? this.vipExpiryText() : '解锁 AI 图像、视频与智能体高级能力')
             .fontFamily('MiSans')
-            .fontSize(11)
+            .fontSize(this.isVip ? 10 : 11)
             .fontColor('#C8A97E')
             .maxLines(1)
             .textOverflow({ overflow: TextOverflow.Ellipsis })
@@ -256,11 +233,11 @@ export struct ProfilePage {
           .fontSize(11)
           .fontWeight(FontWeight.Bold)
           .fontColor('#4F2D16')
-          .height(30)
-          .padding({ left: 12, right: 12 })
+          .height(26)
+          .padding({ left: 10, right: 10 })
           .textAlign(TextAlign.Center)
           .backgroundColor('#F4CF8A')
-          .borderRadius(15)
+          .borderRadius(13)
       }
       .width('100%')
       .alignItems(VerticalAlign.Center)
@@ -278,8 +255,8 @@ export struct ProfilePage {
       .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .height(132)
-    .padding({ left: 18, right: 18, top: 13, bottom: 11 })
+    .height(112)
+    .padding({ left: 14, right: 14, top: 10, bottom: 10 })
     .justifyContent(FlexAlign.SpaceBetween)
     .linearGradient({
       angle: 135,
@@ -296,7 +273,7 @@ export struct ProfilePage {
   private vipBenefit(title: string) {
     Text(title)
       .fontFamily('MiSans')
-      .fontSize(9)
+      .fontSize(10)
       .fontColor('#EECC9A')
       .textAlign(TextAlign.Center)
       .layoutWeight(1)
@@ -311,9 +288,10 @@ export struct ProfilePage {
     Row({ space: 14 }) {
       // Avatar circle with purple gradient
       Column() {
-        Text('👤')
-          .fontSize(28)
-          .fontColor(Color.White)
+        Image($rawfile('icons/ic_profile_person_white.svg'))
+          .width(28)
+          .height(28)
+          .objectFit(ImageFit.Contain)
       }
       .width(64)
       .height(64)
@@ -321,7 +299,7 @@ export struct ProfilePage {
       .justifyContent(FlexAlign.Center)
       .linearGradient({
         angle: 135,
-        colors: [['#D8B4FE', 0], ['#C4B5FD', 1]]
+        colors: [['#A477E0', 0], ['#8662D4', 1]]
       })
 
       // Name column
@@ -361,7 +339,7 @@ export struct ProfilePage {
         .borderRadius(19)
         .linearGradient({
           angle: 135,
-          colors: [['#D8B4FE', 0], ['#A78BFA', 1]]
+          colors: [['#A477E0', 0], ['#8662D4', 1]]
         })
     }
     .width('100%')

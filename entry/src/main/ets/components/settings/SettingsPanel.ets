@@ -27,6 +27,7 @@ const SKILLS: SkillItem[] = [
 
 const AGREEMENT_URL = 'https://www.cjym123.cn/agreement_agentclaw.html';
 const PRIVACY_URL = 'https://www.cjym123.cn/privacy_agentclaw.html';
+const FEEDBACK_URL = 'https://www.cjym123.cn/feedback_agentclaw.html';
 const ICP_URL = 'https://beian.miit.gov.cn/';
 
 @Component
@@ -363,6 +364,7 @@ export struct SettingsPanel {
 
           this.aboutLinkRow('用户协议', AGREEMENT_URL)
           this.aboutLinkRow('隐私政策', PRIVACY_URL)
+          this.aboutLinkRow('客服反馈', FEEDBACK_URL)
           this.clearDataButton()
         }
         .width('100%')

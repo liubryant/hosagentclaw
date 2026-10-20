@@ -105,6 +105,8 @@ const VIDEO_FEATURE_CARDS: FeatureCard[] = [
   }
 ];
 
+const CREATION_TITLE_CHARACTERS: string[] = ['今', '天', '用', 'A', 'I', '创', '作', '什', '么', '？'];
+
 // Module state lives for the whole application process. The gallery is rebuilt
 // by the conditional tab UI, so keep its cold-start order/data outside the
 // component to avoid reloading and reshuffling on every tab switch.
@@ -145,6 +147,8 @@ export struct CreationGalleryPage {
   @State private displayedImageFiles: string[] = galleryImageFiles;
   @State private imagePrompts: CreationPromptItem[] = galleryImagePrompts;
   @State private videoThumbnails: (image.PixelMap | undefined)[] = galleryVideoThumbnails;
+  @State private titleVisibleCharacterCount: number = 2;
+  private titleWritingTimer: number = -1;
 
   aboutToAppear(): void {
     AppBackNavigator.register(this.backHandlerId, (): boolean => this.handleBack());
@@ -160,6 +164,7 @@ export struct CreationGalleryPage {
       galleryVideosLoading = true;
       this.loadVideoThumbnails();
     }
+    this.startTitleWritingAnimation();
     // ShellPage conditionally mounts tab content. Restore the process-level
     // scroll positions after this Scroll has attached to its controller.
     setTimeout((): void => {
@@ -170,6 +175,7 @@ export struct CreationGalleryPage {
 
   aboutToDisappear(): void {
     AppBackNavigator.unregister(this.backHandlerId);
+    this.clearTitleWritingTimer();
   }
 
   private handleBack(): boolean {
@@ -303,13 +309,27 @@ export struct CreationGalleryPage {
   build() {
     Stack() {
       Column() {
-        Text('今天用AI创作什么？')
-          .fontSize(26)
-          .fontWeight(FontWeight.Normal)
-          .fontFamily('MiSans-Normal')
-          .fontColor('#6750F5')
-          .lineHeight(36)
-          .textAlign(TextAlign.Center)
+        Row({ space: 0 }) {
+          ForEach(CREATION_TITLE_CHARACTERS, (character: string, index: number) => {
+            Text(character)
+                .fontSize(26)
+                .fontWeight(FontWeight.Normal)
+                .fontFamily('MiSans-Normal')
+                .fontColor(['#7558F7', '#7F5AF2', '#895CEE', '#935EE8', '#9D60E3',
+                  '#A862DE', '#B264D9', '#BC66D5', '#C668D0', '#D06BCB'][index])
+                .lineHeight(36)
+              .opacity(index < this.titleVisibleCharacterCount ? 1 : 0)
+              .scale({
+                x: index < this.titleVisibleCharacterCount ? 1 : 0.94,
+                y: index < this.titleVisibleCharacterCount ? 1 : 0.94
+              })
+              .translate({
+                x: index < this.titleVisibleCharacterCount ? 0 : -3,
+                y: index < this.titleVisibleCharacterCount ? 0 : (index % 3 === 0 ? 4 : 6)
+              })
+          }, (_character: string, index: number): string => `creation-title-${index}`)
+        }
+          .justifyContent(FlexAlign.Center)
           .width('100%')
           .margin({ top: 24, bottom: 10 })
           .padding({ left: 20, right: 20 })
@@ -381,13 +401,18 @@ export struct CreationGalleryPage {
         .fontSize(15)
         .fontFamily('MiSans-DemiBold')
         .fontWeight(FontWeight.Bold)
-        .fontColor(this.activeTab === index ? AgentClawDesign.accent : '#8C8C8C')
+        .fontColor(this.activeTab === index ? Color.White : '#8C8C8C')
     }
     .layoutWeight(1)
     .height('100%')
     .justifyContent(FlexAlign.Center)
     .borderRadius(10)
-    .backgroundColor(this.activeTab === index ? Color.White : Color.Transparent)
+    .linearGradient({
+      angle: 315,
+      colors: this.activeTab === index ?
+        [['#8C74F8', 0], ['#AD78F1', 0.5], ['#D987D5', 1]] as [string, number][] :
+        [['#00000000', 0], ['#00000000', 1]] as [string, number][]
+    })
     .shadow(this.activeTab === index ? {
       radius: 4,
       color: 'rgba(0,0,0,0.08)',
@@ -413,11 +438,11 @@ export struct CreationGalleryPage {
       .padding({ left: 20, right: 20, top: 16 })
 
       // Inspiration section header
-      Text('灵感')
+      Text('灵感画廊')
         .fontSize(18)
-        .fontFamily('MiSans-DemiBold')
-        .fontWeight(FontWeight.Bold)
-        .fontColor('#1C1C22')
+        .fontFamily('MiSans-Normal')
+        .fontWeight(FontWeight.Normal)
+        .fontColor('#707078')
         .alignSelf(ItemAlign.Start)
         .margin({ left: 24, top: 18, bottom: 10 })
 
@@ -460,11 +485,11 @@ export struct CreationGalleryPage {
       .padding({ left: 20, right: 20, top: 16 })
 
       // Inspiration section header
-      Text('灵感')
+      Text('灵感画廊')
         .fontSize(18)
-        .fontFamily('MiSans-DemiBold')
-        .fontWeight(FontWeight.Bold)
-        .fontColor('#1C1C22')
+        .fontFamily('MiSans-Normal')
+        .fontWeight(FontWeight.Normal)
+        .fontColor('#707078')
         .alignSelf(ItemAlign.Start)
         .margin({ left: 24, top: 18, bottom: 10 })
 
@@ -531,14 +556,14 @@ export struct CreationGalleryPage {
         .height(27)
 
       Text(card.title)
-        .fontSize(16)
+        .fontSize(14)
         .fontFamily('MiSans-DemiBold')
         .fontWeight(FontWeight.Bold)
         .fontColor(Color.White)
         .margin({ top: 7 })
 
       Text(card.subtitle)
-        .fontSize(10)
+        .fontSize(9)
         .fontFamily('MiSans-Normal')
         .fontColor('rgba(223,255,255,0.87)')
         .maxLines(1)
@@ -553,10 +578,10 @@ export struct CreationGalleryPage {
     .justifyContent(FlexAlign.End)
     .linearGradient(card.isPrimary ? {
       angle: 315,
-      colors: [['#7558F7', 0], ['#9A56EE', 0.5], ['#D06BCB', 1]]
+      colors: [['#8C74F8', 0], ['#AD78F1', 0.5], ['#D987D5', 1]]
     } : {
       angle: 315,
-      colors: [['#187FD8', 0], ['#1EA7D5', 0.5], ['#5CC6BE', 1]]
+      colors: [['#3B96DB', 0], ['#45B4D4', 0.5], ['#78D0C5', 1]]
     })
     .onClick(() => {
       if (card.isVideo) {
@@ -565,6 +590,28 @@ export struct CreationGalleryPage {
         this.onLaunchImageChat();
       }
     })
+  }
+
+  private startTitleWritingAnimation(): void {
+    if (this.titleVisibleCharacterCount >= CREATION_TITLE_CHARACTERS.length || this.titleWritingTimer >= 0) {
+      return;
+    }
+    const delay = this.titleVisibleCharacterCount === 2 ? 420 :
+      (this.titleVisibleCharacterCount === 5 || this.titleVisibleCharacterCount === 7 ? 130 : 72);
+    this.titleWritingTimer = setTimeout((): void => {
+      this.titleWritingTimer = -1;
+      animateTo({ duration: 220, curve: Curve.EaseOut }, (): void => {
+        this.titleVisibleCharacterCount += 1;
+      });
+      this.startTitleWritingAnimation();
+    }, delay) as number;
+  }
+
+  private clearTitleWritingTimer(): void {
+    if (this.titleWritingTimer >= 0) {
+      clearTimeout(this.titleWritingTimer);
+      this.titleWritingTimer = -1;
+    }
   }
 
   @Builder

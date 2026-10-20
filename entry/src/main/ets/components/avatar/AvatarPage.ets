@@ -154,8 +154,12 @@ export struct AvatarPage {
     if (this.turns.length === 0) {
       const welcome = new AvatarTurn();
       welcome.role = ChatRole.ASSISTANT;
-      welcome.content = '你好，我是你的智能体助手。\n你可以直接说话，也可以输入文字。';
+      welcome.content = '你好，我是你的智能体助手 Lily。\n你可以直接说话，也可以输入文字。';
       this.turns = [welcome];
+      this.persistConversation();
+    } else if (this.turns[0].role === ChatRole.ASSISTANT &&
+      this.turns[0].content === '你好，我是你的智能体助手。\n你可以直接说话，也可以输入文字。') {
+      this.turns[0].content = '你好，我是你的智能体助手 Lily。\n你可以直接说话，也可以输入文字。';
       this.persistConversation();
     }
   }
@@ -646,10 +650,10 @@ export struct AvatarPage {
             .fontFamily('MiSans-DemiBold')
             .fontColor('#8F8BFA')
           Text() {
-            Span('L').fontColor('#55C5FA')
-            Span('I').fontColor('#55C5FA')
-            Span('L').fontColor('#986FEF')
-            Span('Y').fontColor('#986FEF')
+            Span('L').fontColor(Color.White)
+            Span('I').fontColor(Color.White)
+            Span('L').fontColor(Color.White)
+            Span('Y').fontColor(Color.White)
           }
             .fontSize(10)
             .fontWeight(FontWeight.Bold)
@@ -710,7 +714,7 @@ export struct AvatarPage {
         }))
       }
       .width('100%')
-      .height('64%')
+      .height('48%')
       .backgroundColor('#4B2E78')
 
       Scroll(this.scroller) {
@@ -733,7 +737,7 @@ export struct AvatarPage {
               Column({ space: 2 }) {
                 ForEach(this.speechSegments(turn.content), (segment: string, index: number) => {
                   Text(segment)
-                    .fontSize(16)
+                    .fontSize(12)
                     .fontFamily('MiSans')
                     .fontColor('#1C2230')
                     .lineHeight(23)
@@ -752,7 +756,6 @@ export struct AvatarPage {
               }
               .width('100%')
               if (this.actionTurnId === turn.id) {
-                Divider().color('#DDE1E8').strokeWidth(0.5).margin({ top: 5 })
                 Row({ space: 8 }) {
                   Row({ space: 5 }) {
                     Image($rawfile('icons/ic_message_read.svg')).width(17).height(17)
@@ -856,7 +859,8 @@ export struct AvatarPage {
               inputMethod.getController().stopInputSession().catch(() => {});
               this.submit();
             })
-            .fontSize(13)
+            .fontSize(10)
+            .placeholderFont({ size: 10 })
             .height(38)
             .layoutWeight(1)
             .constraintSize({ minWidth: 0 })
@@ -877,9 +881,13 @@ export struct AvatarPage {
         }
         if (this.isThinking || this.isSpeaking) {
           Row({ space: 6 }) {
-            Text('⊗').fontSize(14).fontColor('#8B909A')
+            Image($rawfile('icons/ic_stop_session.svg'))
+              .width(18)
+              .height(18)
+              .objectFit(ImageFit.Contain)
             Text('停止当前会话').fontSize(13).fontColor('#858B96')
           }
+          .alignItems(VerticalAlign.Center)
           .padding({ top: 4, bottom: 6 })
           .onClick(() => this.stopCurrentSession())
         }
