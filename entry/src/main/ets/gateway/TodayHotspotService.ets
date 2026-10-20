@@ -11,6 +11,12 @@ export interface TodayHotspotItem {
   prompt: string;
 }
 
+const CHINA_SPACE_STATION_HOTSPOT: TodayHotspotItem = {
+  title: '今晚能看到中国空间站吗？',
+  subtitle: '过境时间、方向与手机拍摄技巧',
+  prompt: '中国空间站今晚几点从我所在城市上空经过？朝哪个方向看？用手机怎么拍？'
+};
+
 interface HotspotRawItem {
   title?: string;
   subtitle?: string;
@@ -56,20 +62,24 @@ export class TodayHotspotService {
       const code = json.code;
 
       if (code !== '0' && code !== 0) {
-        return [];
+        return [CHINA_SPACE_STATION_HOTSPOT];
       }
 
       const data = json.data ?? [];
-      return data
+      const remoteItems = data
         .map((item): TodayHotspotItem => ({
           title: item.title ?? '',
           subtitle: item.subtitle ?? '',
           prompt: item.promptTemplate ?? ''
         }))
         .filter((item): boolean => item.title.length > 0);
+      return [
+        CHINA_SPACE_STATION_HOTSPOT,
+        ...remoteItems.filter((item): boolean => item.title !== CHINA_SPACE_STATION_HOTSPOT.title)
+      ];
     } catch (e) {
       console.warn('[TodayHotspotService] fetchHotspots failed:', e);
-      return [];
+      return [CHINA_SPACE_STATION_HOTSPOT];
     } finally {
       request.destroy();
     }

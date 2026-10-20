@@ -25,6 +25,8 @@ import { ProfilePage } from '../profile/ProfilePage';
 import { VipMembershipPage } from '../vip/VipMembershipPage';
 import { AvatarPage } from '../avatar/AvatarPage';
 import { AppPreferences } from '../../storage/AppPreferences';
+import { PaymentApi } from '../../pay/PaymentApi';
+import { MembershipInfo } from '../../pay/VipProduct';
 import { SystemBarStyle } from '../../common/SystemBarStyle';
 import { WindowStageHolder } from '../../common/WindowStageHolder';
 import { AppBackNavigator } from '../../common/AppBackNavigator';
@@ -65,6 +67,8 @@ export struct ShellPage {
   @State private webviewController: webview.WebviewController = new webview.WebviewController();
   @State private isLoggedIn: boolean = false;
   @State private userPhone: string = '';
+  @State private isVip: boolean = false;
+  @State private vipExpiresAt: string = '';
   @State private isTabTransitioning: boolean = false;
 
   aboutToAppear(): void {
@@ -144,6 +148,27 @@ export struct ShellPage {
   private refreshLoginState(): void {
     this.isLoggedIn = AppPreferences.shared.isLoggedIn;
     this.userPhone = AppPreferences.shared.userPhone ?? '';
+    this.isVip = this.isLoggedIn && AppPreferences.shared.vipActive;
+    this.refreshVipStatus();
+  }
+
+  private refreshVipStatus(): void {
+    const token = AppPreferences.shared.userAccessToken;
+    if (!this.isLoggedIn || token === null || token.length === 0) {
+      this.isVip = false;
+      this.vipExpiresAt = '';
+      AppPreferences.shared.vipActive = false;
+      return;
+    }
+    PaymentApi.shared.getMembership(token)
+      .then((info: MembershipInfo) => {
+        this.isVip = info.active;
+        this.vipExpiresAt = info.expiresAt ?? '';
+        AppPreferences.shared.vipActive = info.active;
+      })
+      .catch(() => {
+        // 网络异常时保留本地会员状态，避免已生效权益短暂闪变。
+      });
   }
 
   private applyActiveTabSystemBar(): void {
@@ -375,6 +400,8 @@ export struct ShellPage {
                 .hitTestBehavior(this.activeTab === 'creation' ? HitTestMode.Default : HitTestMode.None)
 
               ProfilePage({
+                isVip: this.isVip,
+                vipExpiresAt: this.vipExpiresAt,
                 onOpenSettings: () => {
                   this.isSettingsPresented = true;
                 },
@@ -388,6 +415,9 @@ export struct ShellPage {
                 },
                 onOpenVip: () => {
                   this.openVipPage();
+                },
+                onAccountChanged: () => {
+                  this.refreshLoginState();
                 }
                 })
                 .width('100%')
@@ -501,6 +531,11 @@ export struct ShellPage {
             this.webViewUrl = url;
             this.webViewTitle = title;
             this.activateBackHandler();
+          },
+          onMembershipChanged: (active: boolean, expiresAt: string) => {
+            this.isVip = active;
+            this.vipExpiresAt = expiresAt;
+            AppPreferences.shared.vipActive = active;
           }
         })
           .width('100%')
@@ -774,6 +809,9 @@ export struct ShellPage {
       }
       console.info(`tuanjiehub tab_select from=${this.activeTab} to=${tab}`);
       this.activeTab = tab;
+      if (tab === 'profile') {
+        this.refreshVipStatus();
+      }
       if (tab === 'chat') {
         this.isSidebarVisible = true;
       }

@@ -21,10 +21,13 @@ function isValidLoginCode(code: string): boolean {
 @Component
 export struct ProfilePage {
   private readonly backHandlerId: string = AppBackNavigator.createHandlerId('profile');
+  @Prop isVip: boolean = false;
+  @Prop vipExpiresAt: string = '';
   onOpenSettings: () => void = () => {};
   onOpenDocuments: () => void = () => {};
   onOpenWebView: (url: string, title: string) => void = () => {};
   onOpenVip: () => void = () => {};
+  onAccountChanged: () => void = () => {};
 
   @State private isLoggedIn: boolean = false;
   @State private userPhone: string = '';
@@ -66,6 +69,7 @@ export struct ProfilePage {
   private refreshLoginState(): void {
     this.isLoggedIn = AppPreferences.shared.isLoggedIn;
     this.userPhone = AppPreferences.shared.userPhone ?? '';
+    this.onAccountChanged();
   }
 
   private loadCurrentVersionName(): void {
@@ -218,53 +222,88 @@ export struct ProfilePage {
 
   @Builder
   private vipCard() {
-    Row({ space: 12 }) {
-      Column() {
-        Text('VIP')
+    Column({ space: 12 }) {
+      Row({ space: 11 }) {
+        Text('✦')
+          .fontFamily('MiSans')
+          .fontSize(18)
+          .fontWeight(FontWeight.Bold)
+          .fontColor('#4B2A12')
+          .width(38)
+          .height(38)
+          .textAlign(TextAlign.Center)
+          .backgroundColor('#F4CF8A')
+          .borderRadius(19)
+
+        Column({ space: 4 }) {
+          Text(this.isVip ? 'Agent智能体会员' : '开通Agent智能体会员')
+            .fontFamily('MiSans')
+            .fontSize(15)
+            .fontWeight(FontWeight.Bold)
+            .fontColor('#FFF2D2')
+          Text(this.isVip ? this.vipExpiryText() : '解锁 AI 图像、视频与智能体高级能力')
+            .fontFamily('MiSans')
+            .fontSize(11)
+            .fontColor('#C8A97E')
+            .maxLines(1)
+            .textOverflow({ overflow: TextOverflow.Ellipsis })
+        }
+        .alignItems(HorizontalAlign.Start)
+        .layoutWeight(1)
+
+        Text(this.isVip ? '立即续费' : '立即开通')
+          .fontFamily('MiSans')
           .fontSize(11)
           .fontWeight(FontWeight.Bold)
-          .fontColor('#3A220D')
+          .fontColor('#4F2D16')
+          .height(30)
+          .padding({ left: 12, right: 12 })
+          .textAlign(TextAlign.Center)
+          .backgroundColor('#F4CF8A')
+          .borderRadius(15)
       }
-      .width(46)
-      .height(46)
-      .borderRadius(23)
-      .justifyContent(FlexAlign.Center)
-      .linearGradient({
-        angle: 135,
-        colors: [['#FFF2BC', 0], ['#D9A64C', 1]] as [string, number][]
-      })
+      .width('100%')
+      .alignItems(VerticalAlign.Center)
 
-      Text('解锁 AI 图文视频高级能力')
-        .fontSize(12)
-        .fontFamily('MiSans')
-        .fontWeight(FontWeight.Medium)
-        .fontColor('#FFF1C2')
-        .maxLines(1)
-        .textOverflow({ overflow: TextOverflow.Ellipsis })
-      .layoutWeight(1)
+      Divider().color('#22FFFFFF')
 
-      Text('开通')
-        .fontSize(11)
-        .fontWeight(FontWeight.Bold)
-        .fontColor('#3A220D')
-        .textAlign(TextAlign.Center)
-        .width(58)
-        .height(32)
-        .backgroundColor('#FEEBB9')
-        .borderRadius(16)
+      Row() {
+        this.vipBenefit('✦ 智能体畅聊')
+        Divider().vertical(true).height(12).color('#33FFFFFF')
+        this.vipBenefit('✦ AI 图像创作')
+        Divider().vertical(true).height(12).color('#33FFFFFF')
+        this.vipBenefit('✦ AI 视频创作')
+      }
+      .width('100%')
+      .alignItems(VerticalAlign.Center)
     }
     .width('100%')
-    .height(82)
-    .padding({ left: 16, right: 14 })
-    .borderRadius(20)
+    .height(132)
+    .padding({ left: 18, right: 18, top: 13, bottom: 11 })
+    .justifyContent(FlexAlign.SpaceBetween)
     .linearGradient({
       angle: 135,
-      colors: [['#2A1710', 0], ['#5B3821', 0.65], ['#1B1010', 1]] as [string, number][]
+      colors: [['#34251B', 0], ['#17100C', 1]] as [string, number][]
     })
-    .border({ width: 1, color: 'rgba(254,235,185,0.2)' })
+    .border({ width: 1, color: '#765437' })
+    .borderRadius(16)
     .onClick(() => {
       this.onOpenVip();
     })
+  }
+
+  @Builder
+  private vipBenefit(title: string) {
+    Text(title)
+      .fontFamily('MiSans')
+      .fontSize(9)
+      .fontColor('#EECC9A')
+      .textAlign(TextAlign.Center)
+      .layoutWeight(1)
+  }
+
+  private vipExpiryText(): string {
+    return this.vipExpiresAt.length > 0 ? `到期时间：${this.vipExpiresAt}` : '到期时间：--';
   }
 
   @Builder

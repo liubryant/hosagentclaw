@@ -18,6 +18,7 @@ export struct VipMembershipPage {
   onClose: () => void = () => {};
   onRequireLogin: () => void = () => {};
   onOpenWebView: (url: string, title: string) => void = () => {};
+  onMembershipChanged: (active: boolean, expiresAt: string) => void = () => {};
 
   @State private products: VipProduct[] = [];
   @State private selectedProductId: string = '';
@@ -859,6 +860,7 @@ export struct VipMembershipPage {
     if (token === null || token.length === 0) {
       this.memberActive = false;
       AppPreferences.shared.vipActive = false;
+      this.onMembershipChanged(false, '');
       this.memberExpiresAt = '';
       return;
     }
@@ -868,6 +870,7 @@ export struct VipMembershipPage {
         this.memberActive = info.active;
         AppPreferences.shared.vipActive = info.active;
         this.memberExpiresAt = info.expiresAt ?? '';
+        this.onMembershipChanged(info.active, this.memberExpiresAt);
         if (info.active) {
           this.statusText = '会员已开通，可继续续费';
         }
@@ -986,6 +989,7 @@ export struct VipMembershipPage {
           this.isPaying = false;
           this.memberActive = true;
           AppPreferences.shared.vipActive = true;
+          this.onMembershipChanged(true, this.memberExpiresAt);
           this.statusText = '支付成功，会员已开通';
           this.loadMembershipStatus();
         }
